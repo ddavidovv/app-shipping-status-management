@@ -1,0 +1,76 @@
+# Node.js with React
+# Build a Node.js project that uses React.
+# Add steps that analyze code, save build artifacts, deploy, and more:
+# https://docs.microsoft.com/azure/devops/pipelines/languages/javascript
+
+trigger:
+  batch: true
+  branches:
+    include:
+      - main
+      - staging 
+      - dev
+  paths:
+    exclude:
+      - '*.md'
+      - '*.yml'
+      - '*.yaml'
+      - '.gitignore'
+ 
+pool:
+  vmImage: ubuntu-latest
+  # https://docs.microsoft.com/es-es/azure/devops/pipelines/agents/hosted?view=azure-devops&tabs=yaml
+  #
+variables:
+  - name: aws_credentials
+    ${{ if or(eq(variables['Build.SourceBranch'], 'refs/heads/master'), eq(variables['Build.SourceBranch'], 'refs/heads/main')) }}:
+      value: azure-devops-corporate-apps-webs-production
+    ${{ else }}:
+      value: azure-devops-corporate-apps-webs-stating
+  - name: bucketName
+    ${{ if or(eq(variables['Build.SourceBranch'], 'refs/heads/master'), eq(variables['Build.SourceBranch'], 'refs/heads/main')) }}:
+      value: shipping-status-production
+    ${{ else }}:
+      value: shipping-status-staging
+  - name: aws_region
+    ${{ if or(eq(variables['Build.SourceBranch'], 'refs/heads/master'), eq(variables['Build.SourceBranch'], 'refs/heads/main')) }}:
+      value: eu-central-1
+    ${{ else }}:
+      value: eu-west-1
+  - name: distribution_id
+    ${{ if or(eq(variables['Build.SourceBranch'], 'refs/heads/master'), eq(variables['Build.SourceBranch'], 'refs/heads/main')) }}:
+      value: 'FILL_CLOUDFRONT_ID'
+    ${{ else }}:
+      value: 'E2LTV7C2Q7KE05'      
+
+steps:
+  - task: NodeTool@0
+    inputs:
+      versionSpec: '23.x'
+    displayName: 'Install Node.js'
+
+  - task: CmdLine@2
+    inputs:
+      script: |
+          yarn install
+          yarn init-incident-solver
+          yarn build
+      workingDirectory: '$(Build.SourcesDirectory)'
+    env:
+        {VITE_ENVIRONMENT: 'staging'}
+
+  - task: S3Upload@1
+    inputs:
+      awsCredentials: $(aws_credentials)
+      regionName: $(aws_region)
+      bucketName: $(bucketName)
+      sourceFolder: '$(Build.SourcesDirectory)/dist'
+      globExpressions: '**'
+
+  - task: AWSCLI@1
+    inputs:
+      awsCredentials: $(aws_credentials)
+      regionName: $(aws_region)
+      awsCommand: 'cloudfront'
+      awsSubCommand: 'create-invalidation'
+      awsArguments: '--distribution-id $(distribution_id) --paths "/*"'
