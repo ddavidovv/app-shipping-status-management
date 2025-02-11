@@ -30,9 +30,9 @@ variables:
       value: azure-devops-corporate-apps-webs-stating
   - name: bucketName
     ${{ if or(eq(variables['Build.SourceBranch'], 'refs/heads/master'), eq(variables['Build.SourceBranch'], 'refs/heads/main')) }}:
-      value: shipping-status-production
+      value: app-shipping-status-management-prod
     ${{ else }}:
-      value: shipping-status-staging
+      value: app-shipping-status-management-staging
   - name: aws_region
     ${{ if or(eq(variables['Build.SourceBranch'], 'refs/heads/master'), eq(variables['Build.SourceBranch'], 'refs/heads/main')) }}:
       value: eu-central-1
