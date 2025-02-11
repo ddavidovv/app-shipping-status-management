@@ -8,6 +8,7 @@ trigger:
   branches:
     include:
       - main
+      - master
       - staging 
       - dev
   paths:
@@ -39,15 +40,30 @@ variables:
       value: eu-west-1
   - name: distribution_id
     ${{ if or(eq(variables['Build.SourceBranch'], 'refs/heads/master'), eq(variables['Build.SourceBranch'], 'refs/heads/main')) }}:
-      value: 'FILL_CLOUDFRONT_ID'
+      value: 'E2ZZ4MIO9G72GK'
     ${{ else }}:
-      value: 'E2LTV7C2Q7KE05'      
+      value: 'E2LTV7C2Q7KE05'
+  - name: env_value
+    ${{ if or(eq(variables['Build.SourceBranch'], 'refs/heads/master'), eq(variables['Build.SourceBranch'], 'refs/heads/main')) }}:
+      value: $(Build.Repository.Name).env.production
+    ${{ else }}: 
+      value: $(Build.Repository.Name).env.staging            
 
 steps:
   - task: NodeTool@0
     inputs:
       versionSpec: '23.x'
     displayName: 'Install Node.js'
+
+  - task: DownloadSecureFile@1
+    name: env_value
+    displayName: 'Download the .env from $(env_value)'
+    inputs:
+      secureFile: $(env_value)
+
+  - script: |
+      cp  $(env_value.secureFilePath) .env
+    displayName: 'Add the .env'    
 
   - task: CmdLine@2
     inputs:
@@ -56,8 +72,6 @@ steps:
           yarn init-incident-solver
           yarn build
       workingDirectory: '$(Build.SourcesDirectory)'
-    env:
-        {VITE_ENVIRONMENT: 'staging'}
 
   - task: S3Upload@1
     inputs:
