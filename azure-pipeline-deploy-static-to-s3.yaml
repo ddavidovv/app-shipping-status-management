@@ -43,11 +43,15 @@ variables:
       value: 'E2ZZ4MIO9G72GK'
     ${{ else }}:
       value: 'E2LTV7C2Q7KE05'
-  - name: env_value
-    ${{ if or(eq(variables['Build.SourceBranch'], 'refs/heads/master'), eq(variables['Build.SourceBranch'], 'refs/heads/main')) }}:
-      value: $(Build.Repository.Name).env.production
-    ${{ else }}: 
-      value: $(Build.Repository.Name).env.staging            
+  # - name: env_value
+  #   ${{ if or(eq(variables['Build.SourceBranch'], 'refs/heads/master'), eq(variables['Build.SourceBranch'], 'refs/heads/main')) }}:
+  #     value: $(Build.Repository.Name).env.production
+  #   ${{ else }}: 
+  #     value: $(Build.Repository.Name).env.staging            
+  - ${{ if or(eq(variables['Build.SourceBranch'], 'refs/heads/master'), eq(variables['Build.SourceBranch'], 'refs/heads/main')) }}:
+    - group: app-shipping-status-management.env.production
+  - ${{ else }}: 
+    - group: app-shipping-status-management.env.staging
 
 steps:
   - task: NodeTool@0
@@ -55,16 +59,21 @@ steps:
       versionSpec: '23.x'
     displayName: 'Install Node.js'
 
-  - task: DownloadSecureFile@1
-    name: env_value
-    displayName: 'Download the .env from $(env_value)'
-    inputs:
-      secureFile: $(env_value)
+  # - task: DownloadSecureFile@1
+  #   name: env_value
+  #   displayName: 'Download the .env from $(env_value)'
+  #   inputs:
+  #     secureFile: $(env_value)
+
+  # - script: |
+  #     cp  $(env_value.secureFilePath) .env
+  #   displayName: 'Add the .env'    
 
   - script: |
-      cp  $(env_value.secureFilePath) .env
-    displayName: 'Add the .env'    
-
+      env > .env
+      cat .env
+    displayName: 'Add the .env'
+    
   - task: CmdLine@2
     inputs:
       script: |
