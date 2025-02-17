@@ -17,20 +17,26 @@ export const eventService = {
     };
   },
 
-  async cancelStatus(packageCode: string, eventDateTime: string, statusId: string) {
-    const url = `${import.meta.env.VITE_API_URL}/item-status-v2/v1/items/${packageCode}/cancel-status`;
+  async cancelStatus(statusCode: string, eventDateTime: string, reason: string, userEmail: string = 'test@example.com') {
+    const url = `${import.meta.env.VITE_API_URL}/item-status-v2/v1/items/${statusCode}/status/cancel`;
+    
+    const requestBody = {
+      event_datetime: eventDateTime,
+      status_id: statusCode,
+      user_id: userEmail
+    };
+
+    console.log('Cancelando estado con los siguientes parámetros:');
+    console.log('URL:', url);
+    console.log('Body:', JSON.stringify(requestBody, null, 2));
     
     try {
       const response = await fetch(url, {
-        method: 'PATCH',
+        method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          event_datetime: eventDateTime,
-          status_id: statusId,
-          user_id: 'test-user' // TODO: Obtener el usuario real
-        })
+        body: JSON.stringify(requestBody)
       });
 
       if (!response.ok) {
@@ -38,6 +44,8 @@ export const eventService = {
       }
 
       const data = await response.json();
+      console.log('Respuesta del servidor:', data);
+      
       return {
         success: true,
         data

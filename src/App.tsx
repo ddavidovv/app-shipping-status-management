@@ -1,11 +1,14 @@
 import React, { useState } from 'react';
-import { Search, Plus } from 'lucide-react';
-import { ShippingData, ShippingEvent } from './types';
+import { Search, Loader2 } from 'lucide-react';
+import { ShippingData, ShippingEvent, ViewMode, Package, ItemHistory } from './types';
 import TrackingTimeline from './components/TrackingTimeline';
 import ShipmentDetails from './components/ShipmentDetails';
 import Header from './components/Header';
 import CreateEventModal from './components/CreateEventModal';
 import CancelEventModal from './components/CancelEventModal';
+import ViewModeSelector from './components/ViewModeSelector';
+import PackagesList from './components/PackagesList';
+import PackagesComparison from './components/PackagesComparison';
 import { eventService } from './services/eventService';
 
 function App() {
@@ -13,11 +16,23 @@ function App() {
   const [shipmentData, setShipmentData] = useState<ShippingData | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [viewMode, setViewMode] = useState<ViewMode>('shipping');
   const [isCreateEventModalOpen, setIsCreateEventModalOpen] = useState(false);
   const [cancelEventData, setCancelEventData] = useState<{
     event: ShippingEvent;
     isOpen: boolean;
   }>({ event: null, isOpen: false });
+
+  const transformToPackages = (itemsHistory: ItemHistory[]): Package[] => {
+    return itemsHistory.map(item => {
+      const packageNumber = parseInt(item.item_code.slice(-3));
+      return {
+        item_code: item.item_code,
+        events: item.events,
+        package_number: packageNumber
+      };
+    });
+  };
 
   const handleSearch = async () => {
     if (!trackingNumber.trim()) return;
@@ -26,10 +41,13 @@ function App() {
     setError('');
     
     try {
-      const response = await fetch(`/api/item-history-api/v1/history/${trackingNumber}?view=unfiltered&show_items=false`, {
+      const response = await fetch(`/api/enterprise-portal/incident-mgmt/package-info/v1/rpc-get-package-info?shipping_code=${trackingNumber}&view=OPERATIONS&show_items=true`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
+          'jwt-token': import.meta.env.VITE_JWT_TOKEN,
+          'client_secret': import.meta.env.VITE_CLIENT_SECRET,
+          'client_id': import.meta.env.VITE_CLIENT_ID
         }
       });
       
@@ -43,7 +61,22 @@ function App() {
         setError('No se pudo encontrar el envío');
         setShipmentData(null);
       } else {
-        setShipmentData(result.data);
+        // Accedemos a item_history_info con o sin comilla simple
+        const itemHistoryInfo = result["item_history_info'"] || result.item_history_info;
+        
+        if (!itemHistoryInfo?.data) {
+          throw new Error('Formato de respuesta inválido');
+        }
+
+        const transformedData = {
+          ...itemHistoryInfo.data,
+          shipping_history: {
+            ...itemHistoryInfo.data.shipping_history,
+            packages: transformToPackages(itemHistoryInfo.data.items_history || [])
+          },
+          redis_info: result.redis_info
+        };
+        setShipmentData(transformedData);
       }
     } catch (err) {
       console.error('Error:', err);
@@ -58,7 +91,7 @@ function App() {
     try {
       const result = await eventService.createEvent(eventData);
       if (result.success) {
-        await handleSearch(); // Recargar los datos del envío
+        await handleSearch();
       }
     } catch (err) {
       console.error('Error creating event:', err);
@@ -75,13 +108,13 @@ function App() {
       if (!shipmentData || !cancelEventData.event) return;
 
       const result = await eventService.cancelStatus(
-        shipmentData.shipping_history.item_code,
+        cancelEventData.event.code,
         cancelEventData.event.event_date,
-        cancelEventData.event.code
+        reason
       );
 
       if (result.success) {
-        await handleSearch(); // Recargar los datos del envío
+        await handleSearch();
       } else {
         setError(result.error || 'Error al anular el estado');
       }
@@ -91,11 +124,41 @@ function App() {
     }
   };
 
+  const renderContent = () => {
+    if (!shipmentData) return null;
+
+    const packages = shipmentData.shipping_history.packages || [];
+
+    switch (viewMode) {
+      case 'packages':
+        return (
+          <PackagesList
+            packages={packages}
+            onCancelStatus={handleCancelStatus}
+          />
+        );
+      case 'comparison':
+        return (
+          <PackagesComparison
+            packages={packages}
+            onCancelStatus={handleCancelStatus}
+          />
+        );
+      default:
+        return (
+          <TrackingTimeline
+            events={shipmentData.shipping_history.events}
+            onCancelStatus={undefined}
+          />
+        );
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       <Header />
-      <main className="max-w-4xl mx-auto px-4 py-8">
-        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100 mb-8">
+      <main className="max-w-4xl mx-auto px-4 py-4">
+        <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100 mb-4">
           <div className="flex gap-4">
             <input
               type="text"
@@ -103,14 +166,24 @@ function App() {
               onChange={(e) => setTrackingNumber(e.target.value)}
               placeholder="Introduce tu número de seguimiento"
               className="flex-1 px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+              disabled={loading}
             />
             <button
               onClick={handleSearch}
-              disabled={loading}
-              className="px-6 py-2 bg-red-900 text-white rounded-lg hover:bg-red-800 focus:outline-none focus:ring-2 focus:ring-red-500 flex items-center gap-2 disabled:opacity-50"
+              disabled={loading || !trackingNumber.trim()}
+              className="px-6 py-2 bg-red-900 text-white rounded-lg hover:bg-red-800 focus:outline-none focus:ring-2 focus:ring-red-500 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
             >
-              <Search className="w-5 h-5" />
-              {loading ? 'Buscando...' : 'Buscar'}
+              {loading ? (
+                <>
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  <span>Buscando...</span>
+                </>
+              ) : (
+                <>
+                  <Search className="w-5 h-5" />
+                  <span>Buscar</span>
+                </>
+              )}
             </button>
           </div>
           
@@ -120,22 +193,19 @@ function App() {
         </div>
 
         {shipmentData && (
-          <div className="space-y-8">
-            <div className="flex justify-between items-center">
-              <h2 className="text-xl font-semibold text-gray-900">Detalles del Envío</h2>
-              <button
-                onClick={() => setIsCreateEventModalOpen(true)}
-                className="flex items-center gap-2 px-4 py-2 bg-red-900 text-white rounded-lg hover:bg-red-800"
-              >
-                <Plus className="w-4 h-4" />
-                Crear Evento
-              </button>
-            </div>
-            <ShipmentDetails data={shipmentData} />
-            <TrackingTimeline 
-              events={shipmentData.shipping_history.events}
-              onCancelStatus={handleCancelStatus}
+          <div className="space-y-4">
+            <ShipmentDetails 
+              data={shipmentData}
+              onCreateEvent={() => setIsCreateEventModalOpen(true)}
             />
+            
+            <ViewModeSelector
+              viewMode={viewMode}
+              onViewModeChange={setViewMode}
+              packagesCount={shipmentData.items_history?.length || 0}
+            />
+            
+            {renderContent()}
           </div>
         )}
 

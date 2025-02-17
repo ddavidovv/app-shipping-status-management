@@ -2,8 +2,7 @@
 export const CANCELLABLE_STATUS_CODES = [
   '1500', // En reparto
   '1600', // Reparto fallido
-  '1200', // Delegación destino
-  '0900'  // En tránsito
+  '2100', // Entregado
 ];
 
 // Función helper para verificar si un estado es anulable

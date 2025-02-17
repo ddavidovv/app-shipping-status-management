@@ -1,11 +1,12 @@
 import { ShippingEvent } from '../types';
-import { Mail, Package, Truck, CheckCircle2, ChevronDown, ChevronRight, Eraser } from 'lucide-react';
+import { Mail, Package, Truck, CheckCircle2, ChevronDown, ChevronRight, XCircle } from 'lucide-react';
 import { useState } from 'react';
 import { isStatusCancellable } from '../config/eventConfig';
 
 interface Props {
   events: ShippingEvent[];
   onCancelStatus?: (status: ShippingEvent) => void;
+  showNotifications?: boolean;
 }
 
 const formatDateTime = (dateStr: string): string => {
@@ -25,10 +26,12 @@ const getEventIcon = (type: string) => {
   switch (type) {
     case 'NOTIFICATION_V1':
       return <Mail className="w-5 h-5 text-corporate-primary" />;
-    case 'SHIPPING_ITEM_EVENT_V1':
+    case 'PACKAGE_EVENT':
       return <Truck className="w-5 h-5 text-corporate-primary" />;
-    default:
+    case 'STATUS':
       return <CheckCircle2 className="w-5 h-5 text-corporate-primary" />;
+    default:
+      return <Package className="w-5 h-5 text-corporate-primary" />;
   }
 };
 
@@ -42,9 +45,9 @@ const formatDateKey = (date: Date): string => {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 };
 
-export default function TrackingTimeline({ events, onCancelStatus }: Props) {
+export default function TrackingTimeline({ events, onCancelStatus, showNotifications = true }: Props) {
   const [expandedStates, setExpandedStates] = useState<Record<string, boolean>>({});
-  const [showNotifications, setShowNotifications] = useState(true);
+  const [showNotificationsPanel, setShowNotificationsPanel] = useState(true);
 
   const toggleState = (statusDate: string) => {
     setExpandedStates(prev => ({
@@ -60,7 +63,7 @@ export default function TrackingTimeline({ events, onCancelStatus }: Props) {
 
   // Filtrar y ordenar los estados
   const statusEvents = events
-    .filter(event => event.type === 'ITEM_STATUS_V2')
+    .filter(event => event.type === 'STATUS')
     .sort((a, b) => new Date(b.event_date).getTime() - new Date(a.event_date).getTime());
 
   // Obtener días únicos ordenados
@@ -79,7 +82,7 @@ export default function TrackingTimeline({ events, onCancelStatus }: Props) {
     const packageEvents = events.filter(event => {
       const eventDate = new Date(event.event_date).getTime();
       return (
-        event.type === 'SHIPPING_ITEM_EVENT_V1' &&
+        event.type === 'PACKAGE_EVENT' &&
         eventDate <= currentStatusDate &&
         (nextStatusDate === 0 || eventDate > nextStatusDate)
       );
@@ -124,42 +127,44 @@ export default function TrackingTimeline({ events, onCancelStatus }: Props) {
                 ${getBackgroundColor(dayKey, packageEvents.length > 0)} 
                 transition-colors duration-150`}
             >
-              <div className="flex items-center gap-3 flex-1">
-                <CheckCircle2 className="w-5 h-5 text-corporate-primary flex-shrink-0" />
-                <span className="text-sm text-gray-600 font-medium min-w-44">
+              <div className="flex items-center gap-3 flex-1 min-w-0">
+                {getEventIcon(status.type)}
+                <span className="text-sm text-gray-600 font-medium w-44 flex-shrink-0">
                   {formatDateTime(status.event_date)}
                 </span>
-                <div className="flex flex-col">
-                  <span className="text-sm text-corporate-text font-semibold">
+                <div className="flex flex-col min-w-0">
+                  <span className="text-sm text-corporate-text font-semibold truncate">
                     {status.description}
                   </span>
-                  <span className="text-xs text-gray-500">
-                    Estado: {status.code}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-gray-500">
+                      Estado: {status.code}
+                    </span>
+                    {onCancelStatus && isCancellable && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onCancelStatus(status);
+                        }}
+                        className="p-0.5 text-gray-400 hover:text-red-500 transition-colors"
+                        title="Anular estado"
+                      >
+                        <XCircle className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
-              <div className="flex items-center gap-2">
-                {onCancelStatus && isCancellable && (
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onCancelStatus(status);
-                    }}
-                    className="p-1 text-gray-400 hover:text-corporate-text transition-colors"
-                    title="Anular estado"
-                  >
-                    <Eraser className="w-5 h-5" />
-                  </button>
-                )}
+              <div className="flex items-center gap-2 flex-shrink-0">
                 {packageEvents.length > 0 && (
-                  <div className="flex items-center gap-1 text-gray-500">
-                    <span className="text-xs">
-                      {packageEvents.length} {packageEvents.length === 1 ? 'evento' : 'eventos'}
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs text-gray-500 font-medium">
+                      {packageEvents.length}
                     </span>
                     {expandedStates[status.event_date] ? (
-                      <ChevronDown className="w-4 h-4" />
+                      <ChevronDown className="w-4 h-4 text-gray-400" />
                     ) : (
-                      <ChevronRight className="w-4 h-4" />
+                      <ChevronRight className="w-4 h-4 text-gray-400" />
                     )}
                   </div>
                 )}
@@ -175,22 +180,22 @@ export default function TrackingTimeline({ events, onCancelStatus }: Props) {
                     className={`flex items-center gap-3 px-3 py-2 rounded border border-gray-200 shadow-sm
                       ${getEventBackgroundColor(dayKey)}`}
                   >
-                    <div className="flex-1 flex items-center gap-3">
-                      <Truck className="w-5 h-5 text-corporate-primary" />
-                      <span className="text-sm text-gray-600 font-medium min-w-44">
+                    <div className="flex-1 flex items-center gap-3 min-w-0">
+                      {getEventIcon(event.type)}
+                      <span className="text-sm text-gray-600 font-medium w-44 flex-shrink-0">
                         {formatDateTime(event.event_date)}
                       </span>
-                      <div>
-                        <span className="text-sm text-gray-900">
+                      <div className="min-w-0">
+                        <span className="text-sm text-gray-900 truncate block">
                           {event.description}
                         </span>
                         {event.detail?.event_text && (
-                          <span className="text-sm text-gray-600 ml-2">
+                          <span className="text-sm text-gray-600 block truncate">
                             ({event.detail.event_text})
                           </span>
                         )}
                         {event.detail?.signee_name && event.detail.signee_name !== 'null' && (
-                          <span className="text-sm text-gray-600 ml-2">
+                          <span className="text-sm text-gray-600 block truncate">
                             (Firmado por: {event.detail.signee_name})
                           </span>
                         )}
@@ -205,10 +210,10 @@ export default function TrackingTimeline({ events, onCancelStatus }: Props) {
       })}
 
       {/* Sección de notificaciones */}
-      {notifications.length > 0 && (
+      {showNotifications && notifications.length > 0 && (
         <>
           <button 
-            onClick={() => setShowNotifications(!showNotifications)}
+            onClick={() => setShowNotificationsPanel(!showNotificationsPanel)}
             className="w-full flex items-center gap-3 bg-white px-3 py-2 rounded border border-gray-200 shadow-sm hover:bg-gray-50 transition-colors duration-150"
           >
             <div className="flex items-center gap-3 flex-1">
@@ -217,20 +222,20 @@ export default function TrackingTimeline({ events, onCancelStatus }: Props) {
                 Notificaciones
               </span>
             </div>
-            <div className="flex items-center gap-1 text-gray-500">
-              <span className="text-xs">
-                {notifications.length} {notifications.length === 1 ? 'notificación' : 'notificaciones'}
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs text-gray-500 font-medium">
+                {notifications.length}
               </span>
-              {showNotifications ? (
-                <ChevronDown className="w-4 h-4" />
+              {showNotificationsPanel ? (
+                <ChevronDown className="w-4 h-4 text-gray-400" />
               ) : (
-                <ChevronRight className="w-4 h-4" />
+                <ChevronRight className="w-4 h-4 text-gray-400" />
               )}
             </div>
           </button>
 
           {/* Lista de notificaciones */}
-          {showNotifications && (
+          {showNotificationsPanel && (
             <div className="ml-8 space-y-1">
               {notifications.map((notification, index) => {
                 const dayKey = formatDateKey(new Date(notification.event_date));
@@ -241,10 +246,10 @@ export default function TrackingTimeline({ events, onCancelStatus }: Props) {
                       ${getEventBackgroundColor(dayKey)}`}
                   >
                     <Mail className="w-5 h-5 text-corporate-primary" />
-                    <span className="text-sm text-gray-600 font-medium min-w-44">
+                    <span className="text-sm text-gray-600 font-medium w-44 flex-shrink-0">
                       {formatDateTime(notification.event_date)}
                     </span>
-                    <span className="text-sm text-gray-900">
+                    <span className="text-sm text-gray-900 truncate">
                       {notification.description}
                     </span>
                   </div>
