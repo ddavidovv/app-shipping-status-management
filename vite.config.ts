@@ -3,7 +3,6 @@ import react from '@vitejs/plugin-react';
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
-  const apiUrl = env.VITE_API_URL || 'https://api-test.cttexpress.com';
   
   return {
     plugins: [react()],
@@ -12,10 +11,9 @@ export default defineConfig(({ mode }) => {
     },
     server: {
       proxy: {
-        '/api': {
-          target: apiUrl,
+        [env.VITE_API_URL]: {
+          target: env.VITE_API_URL,
           changeOrigin: true,
-          rewrite: (path) => path.replace(/^\/api/, ''),
           secure: false,
           headers: {
             'Authorization': env.VITE_JWT_TOKEN,
@@ -27,7 +25,7 @@ export default defineConfig(({ mode }) => {
               console.log('proxy error', err);
             });
             proxy.on('proxyReq', (proxyReq, req, _res) => {
-              const fullUrl = apiUrl + req.url.replace(/^\/api/, '');
+              const fullUrl = env.VITE_API_URL + req.url;
               console.log('\n🔍 Request Details:');
               console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
               console.log('Full URL:', fullUrl);

@@ -45,7 +45,7 @@ function App() {
   };
 
   const fetchShipment = async (tracking: string): Promise<ShippingData> => {
-    const response = await fetch(`/api${import.meta.env.VITE_API_ENDPOINT}/${tracking}?view=OPERATIONS&show_items=true`, {
+    const response = await fetch(`${import.meta.env.VITE_API_URL}${import.meta.env.VITE_API_ENDPOINT}/${tracking}?view=OPERATIONS&show_items=true`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
@@ -214,9 +214,9 @@ function App() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 flex flex-col">
       <Header />
-      <main className="max-w-4xl mx-auto px-4 py-4">
+      <main className="flex-1 container mx-auto px-4 py-4 flex flex-col max-h-[calc(100vh-4rem)]">
         <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100 mb-4">
           <div className="flex gap-4">
             <div className="flex-1">
@@ -256,32 +256,38 @@ function App() {
           )}
         </div>
 
-        {bulkResults.length > 0 ? (
-          <div className="mb-4">
-            <BulkSearchResults
-              results={bulkResults}
-              onSelect={handleBulkSelect}
-              selectedTracking={selectedTracking}
-            />
-          </div>
-        ) : null}
+        <div className="flex-1 flex gap-4 min-h-0">
+          {/* Lista de resultados */}
+          {bulkResults.length > 0 && (
+            <div className="w-1/3 flex-shrink-0 overflow-hidden flex flex-col">
+              <BulkSearchResults
+                results={bulkResults}
+                onSelect={handleBulkSelect}
+                selectedTracking={selectedTracking}
+              />
+            </div>
+          )}
 
-        {shipmentData && (
-          <div className="space-y-4">
-            <ShipmentDetails 
-              data={shipmentData}
-              onCreateEvent={() => setIsCreateEventModalOpen(true)}
-            />
-            
-            <ViewModeSelector
-              viewMode={viewMode}
-              onViewModeChange={setViewMode}
-              packagesCount={shipmentData.items_history?.length || 0}
-            />
-            
-            {renderContent()}
-          </div>
-        )}
+          {/* Panel de detalles */}
+          {shipmentData && (
+            <div className={`${bulkResults.length > 0 ? 'w-2/3' : 'w-full'} overflow-auto`}>
+              <div className="space-y-4">
+                <ShipmentDetails 
+                  data={shipmentData}
+                  onCreateEvent={() => setIsCreateEventModalOpen(true)}
+                />
+                
+                <ViewModeSelector
+                  viewMode={viewMode}
+                  onViewModeChange={setViewMode}
+                  packagesCount={shipmentData.items_history?.length || 0}
+                />
+                
+                {renderContent()}
+              </div>
+            </div>
+          )}
+        </div>
 
         {shipmentData && (
           <>
