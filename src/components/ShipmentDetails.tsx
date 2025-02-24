@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
+import { MapPin, User, Package, ChevronDown, ChevronRight, Plus, AlertCircle, Tag, Printer, RefreshCw } from 'lucide-react';
 import { ShippingData } from '../types';
-import { MapPin, User, Package, ChevronDown, ChevronRight, Plus, AlertCircle, Tag, Printer } from 'lucide-react';
 import { labelService } from '../services/labelService';
+import { eventService } from '../services/eventService';
 
 interface Props {
   data: ShippingData;
@@ -11,9 +12,11 @@ interface Props {
 export default function ShipmentDetails({ data, onCreateEvent }: Props) {
   const [isExpanded, setIsExpanded] = useState(true);
   const [isPrinting, setPrinting] = useState(false);
+  const [isResetting, setIsResetting] = useState(false);
 
-  const hasChanges = data.redis_info?.param_id_1 && data.redis_info.param_id_1 !== '';
-  const needsRelabeling = data.redis_info?.status_code === '5';
+  // Verificar si redis_info existe antes de acceder a sus propiedades
+  const needsRelabeling = data.redis_info && data.redis_info.status_code === '5';
+  const hasChanges = data.redis_info?.param_id_1 ? data.redis_info.param_id_1 !== '' : false;
 
   const handlePrintLabel = async () => {
     setPrinting(true);
@@ -26,6 +29,25 @@ export default function ShipmentDetails({ data, onCreateEvent }: Props) {
       console.error('Error:', error);
     } finally {
       setPrinting(false);
+    }
+  };
+
+  const handleResetFlags = async () => {
+    if (!data.shipping_code) return;
+    
+    setIsResetting(true);
+    try {
+      const result = await eventService.resetFlags(data.shipping_code);
+      if (result.success) {
+        // Recargar los datos del envío
+        window.location.reload();
+      } else {
+        console.error('Error resetting flags:', result.error);
+      }
+    } catch (error) {
+      console.error('Error:', error);
+    } finally {
+      setIsResetting(false);
     }
   };
 
@@ -56,6 +78,19 @@ export default function ShipmentDetails({ data, onCreateEvent }: Props) {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          {(hasChanges || needsRelabeling) && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                handleResetFlags();
+              }}
+              disabled={isResetting}
+              className="flex items-center gap-1 px-2 py-1 text-xs bg-gray-100 text-gray-700 rounded hover:bg-gray-200 disabled:opacity-50"
+            >
+              <RefreshCw className={`w-3 h-3 ${isResetting ? 'animate-spin' : ''}`} />
+              {isResetting ? 'Reseteando...' : 'Resetear Flags'}
+            </button>
+          )}
           <button
             onClick={(e) => {
               e.stopPropagation();
