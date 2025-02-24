@@ -3,7 +3,7 @@ import react from '@vitejs/plugin-react';
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
-  const apiUrl = env.VITE_API_URL || 'https://cloud-apps-01-int.cttexpress.com';
+  const apiUrl = env.VITE_API_URL || 'https://api-test.cttexpress.com';
   
   return {
     plugins: [react()],
@@ -18,7 +18,7 @@ export default defineConfig(({ mode }) => {
           rewrite: (path) => path.replace(/^\/api/, ''),
           secure: false,
           headers: {
-            'jwt-token': env.VITE_JWT_TOKEN,
+            'Authorization': env.VITE_JWT_TOKEN,
             'client_secret': env.VITE_CLIENT_SECRET,
             'client_id': env.VITE_CLIENT_ID
           },
@@ -27,11 +27,23 @@ export default defineConfig(({ mode }) => {
               console.log('proxy error', err);
             });
             proxy.on('proxyReq', (proxyReq, req, _res) => {
-              console.log('Sending Request:', req.method, req.url);
-              console.log('Target URL:', apiUrl + req.url.replace(/^\/api/, ''));
+              const fullUrl = apiUrl + req.url.replace(/^\/api/, '');
+              console.log('\n🔍 Request Details:');
+              console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+              console.log('Full URL:', fullUrl);
+              console.log('Method:', req.method);
+              console.log('Headers:', proxyReq.getHeaders());
+              console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
             });
             proxy.on('proxyRes', (proxyRes, req, _res) => {
-              console.log('Received Response:', proxyRes.statusCode, req.url);
+              console.log('\n📡 Response Details:');
+              console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+              console.log('Status:', proxyRes.statusCode);
+              console.log('Path:', req.url);
+              if (proxyRes.statusCode >= 400) {
+                console.log('Response Headers:', proxyRes.headers);
+              }
+              console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
             });
           }
         }

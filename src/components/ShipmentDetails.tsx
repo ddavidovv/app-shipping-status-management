@@ -3,6 +3,7 @@ import { MapPin, User, Package, ChevronDown, ChevronRight, Plus, AlertCircle, Ta
 import { ShippingData } from '../types';
 import { labelService } from '../services/labelService';
 import { eventService } from '../services/eventService';
+import DataSourceStatus from './DataSourceStatus';
 
 interface Props {
   data: ShippingData;
@@ -122,6 +123,14 @@ export default function ShipmentDetails({ data, onCreateEvent }: Props) {
 
       {isExpanded && (
         <div className="px-4 pb-4">
+          {/* Estado de las fuentes de datos */}
+          <div className="mb-4">
+            <DataSourceStatus 
+              redisInfo={data.redis_info || null}
+              hasItemHistory={Boolean(data.shipping_history?.events?.length)}
+            />
+          </div>
+
           <div className="grid grid-cols-2 gap-6">
             <div className="space-y-1">
               <h4 className="text-sm font-semibold text-corporate-primary flex items-center gap-1">

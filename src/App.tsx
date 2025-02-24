@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Search, Loader2 } from 'lucide-react';
+import { Search, Loader2, Upload } from 'lucide-react';
 import { ShippingData, ShippingEvent, ViewMode, Package, ItemHistory } from './types';
 import TrackingTimeline from './components/TrackingTimeline';
 import ShipmentDetails from './components/ShipmentDetails';
@@ -9,7 +9,15 @@ import CancelEventModal from './components/CancelEventModal';
 import ViewModeSelector from './components/ViewModeSelector';
 import PackagesList from './components/PackagesList';
 import PackagesComparison from './components/PackagesComparison';
+import BulkSearchResults from './components/BulkSearchResults';
 import { eventService } from './services/eventService';
+
+interface BulkSearchResult {
+  trackingNumber: string;
+  data: ShippingData | null;
+  error?: string;
+  loading: boolean;
+}
 
 function App() {
   const [trackingNumber, setTrackingNumber] = useState('');
@@ -22,6 +30,8 @@ function App() {
     event: ShippingEvent;
     isOpen: boolean;
   }>({ event: null, isOpen: false });
+  const [bulkResults, setBulkResults] = useState<BulkSearchResult[]>([]);
+  const [selectedTracking, setSelectedTracking] = useState<string | null>(null);
 
   const transformToPackages = (itemsHistory: ItemHistory[]): Package[] => {
     return itemsHistory.map(item => {
@@ -34,56 +44,105 @@ function App() {
     });
   };
 
+  const fetchShipment = async (tracking: string): Promise<ShippingData> => {
+    const response = await fetch(`/api${import.meta.env.VITE_API_ENDPOINT}/${tracking}?view=OPERATIONS&show_items=true`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': import.meta.env.VITE_JWT_TOKEN,
+        'client_secret': import.meta.env.VITE_CLIENT_SECRET,
+        'client_id': import.meta.env.VITE_CLIENT_ID
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const result = await response.json();
+
+    if (!result.item_history_info?.data) {
+      throw new Error('No se encontró historial para este envío');
+    }
+
+    const historyData = result.item_history_info.data;
+
+    if (result.redis_info?.error) {
+      console.warn('Redis info error:', result.redis_info.error);
+    }
+
+    return {
+      ...historyData,
+      redis_info: result.redis_info || {}
+    };
+  };
+
   const handleSearch = async () => {
     if (!trackingNumber.trim()) return;
-    
-    setLoading(true);
-    setError('');
-    
-    try {
-      const response = await fetch(`/api/enterprise-portal/incident-mgmt/package-info/v1/rpc-get-package-info?shipping_code=${trackingNumber}&view=OPERATIONS&show_items=true`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          'jwt-token': import.meta.env.VITE_JWT_TOKEN,
-          'client_secret': import.meta.env.VITE_CLIENT_SECRET,
-          'client_id': import.meta.env.VITE_CLIENT_ID
+
+    // Detectar si es una búsqueda múltiple
+    const trackingNumbers = trackingNumber
+      .split(/[\n,]/)
+      .map(t => t.trim())
+      .filter(t => t.length > 0);
+
+    if (trackingNumbers.length > 1) {
+      // Búsqueda múltiple
+      setBulkResults(trackingNumbers.map(t => ({
+        trackingNumber: t,
+        data: null,
+        loading: true
+      })));
+      setShipmentData(null);
+      setError('');
+
+      // Realizar búsquedas en paralelo
+      const searches = trackingNumbers.map(async (t) => {
+        try {
+          const data = await fetchShipment(t);
+          setBulkResults(prev => prev.map(r => 
+            r.trackingNumber === t 
+              ? { trackingNumber: t, data, loading: false }
+              : r
+          ));
+          return { trackingNumber: t, data, loading: false };
+        } catch (err) {
+          setBulkResults(prev => prev.map(r => 
+            r.trackingNumber === t 
+              ? { trackingNumber: t, data: null, error: err.message, loading: false }
+              : r
+          ));
+          return { trackingNumber: t, data: null, error: err.message, loading: false };
         }
       });
-      
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      
-      const result = await response.json();
-      
-      if (result.error) {
-        setError('No se pudo encontrar el envío');
-        setShipmentData(null);
-      } else {
-        // Accedemos a item_history_info con o sin comilla simple
-        const itemHistoryInfo = result["item_history_info'"] || result.item_history_info;
-        
-        if (!itemHistoryInfo?.data) {
-          throw new Error('Formato de respuesta inválido');
-        }
 
-        const transformedData = {
-          ...itemHistoryInfo.data,
-          shipping_history: {
-            ...itemHistoryInfo.data.shipping_history,
-            packages: transformToPackages(itemHistoryInfo.data.items_history || [])
-          },
-          redis_info: result.redis_info
-        };
-        setShipmentData(transformedData);
+      await Promise.all(searches);
+    } else {
+      // Búsqueda individual
+      setBulkResults([]);
+      setSelectedTracking(null);
+      setLoading(true);
+      setError('');
+      
+      try {
+        const data = await fetchShipment(trackingNumber);
+        setShipmentData(data);
+      } catch (err) {
+        console.error('Error:', err);
+        setError(err instanceof Error ? err.message : 'Error al buscar el envío');
+        setShipmentData(null);
+      } finally {
+        setLoading(false);
       }
-    } catch (err) {
-      console.error('Error:', err);
-      setError('Error al buscar el envío');
-      setShipmentData(null);
-    } finally {
-      setLoading(false);
+    }
+  };
+
+  const handleBulkSelect = (tracking: string) => {
+    setSelectedTracking(tracking);
+    const result = bulkResults.find(r => r.trackingNumber === tracking);
+    if (result?.data) {
+      setShipmentData(result.data);
+      setError('');
     }
   };
 
@@ -148,7 +207,7 @@ function App() {
         return (
           <TrackingTimeline
             events={shipmentData.shipping_history.events}
-            onCancelStatus={undefined}
+            onCancelStatus={handleCancelStatus}
           />
         );
     }
@@ -160,18 +219,23 @@ function App() {
       <main className="max-w-4xl mx-auto px-4 py-4">
         <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100 mb-4">
           <div className="flex gap-4">
-            <input
-              type="text"
-              value={trackingNumber}
-              onChange={(e) => setTrackingNumber(e.target.value)}
-              placeholder="Introduce tu número de seguimiento"
-              className="flex-1 px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
-              disabled={loading}
-            />
+            <div className="flex-1">
+              <textarea
+                value={trackingNumber}
+                onChange={(e) => setTrackingNumber(e.target.value)}
+                placeholder="Introduce uno o varios números de seguimiento (separados por comas o saltos de línea)"
+                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 min-h-[80px]"
+                disabled={loading}
+              />
+              <p className="mt-1 text-sm text-gray-500">
+                <Upload className="w-4 h-4 inline-block mr-1" />
+                Puedes pegar múltiples envíos desde Excel
+              </p>
+            </div>
             <button
               onClick={handleSearch}
               disabled={loading || !trackingNumber.trim()}
-              className="px-6 py-2 bg-red-900 text-white rounded-lg hover:bg-red-800 focus:outline-none focus:ring-2 focus:ring-red-500 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+              className="px-6 py-2 bg-red-900 text-white rounded-lg hover:bg-red-800 focus:outline-none focus:ring-2 focus:ring-red-500 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 h-fit"
             >
               {loading ? (
                 <>
@@ -191,6 +255,16 @@ function App() {
             <p className="text-red-600 mt-4">{error}</p>
           )}
         </div>
+
+        {bulkResults.length > 0 ? (
+          <div className="mb-4">
+            <BulkSearchResults
+              results={bulkResults}
+              onSelect={handleBulkSelect}
+              selectedTracking={selectedTracking}
+            />
+          </div>
+        ) : null}
 
         {shipmentData && (
           <div className="space-y-4">
