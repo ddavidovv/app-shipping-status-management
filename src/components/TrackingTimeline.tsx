@@ -106,7 +106,7 @@ export default function TrackingTimeline({ events, onCancelStatus, showNotificat
   };
 
   return (
-    <div className="w-full space-y-2">
+    <div className="w-full space-y-1">
       {/* Estados y sus eventos */}
       {groupedEvents.map(({ status, events: packageEvents, dayKey }) => {
         const isCancellable = isStatusCancellable(status.code);
@@ -114,53 +114,49 @@ export default function TrackingTimeline({ events, onCancelStatus, showNotificat
           <div key={status.event_date} className="space-y-1">
             <div 
               onClick={() => packageEvents.length > 0 && toggleState(status.event_date)}
-              className={`w-full flex items-center gap-3 px-3 py-2 rounded border border-gray-200 shadow-sm
+              className={`w-full flex items-center gap-3 px-3 py-1.5 rounded border border-gray-200 shadow-sm
                 ${packageEvents.length > 0 ? 'cursor-pointer' : ''} 
                 ${getBackgroundColor(dayKey, packageEvents.length > 0)} 
                 transition-colors duration-150`}
             >
               <div className="flex items-center gap-3 flex-1 min-w-0">
                 {getEventIcon(status.type)}
-                <span className="text-sm text-gray-600 font-medium w-44 flex-shrink-0">
+                <span className="text-sm text-gray-600 font-medium w-36 flex-shrink-0">
                   {formatDateTime(status.event_date)}
                 </span>
-                <div className="flex flex-col min-w-0">
+                <div className="flex items-center gap-2 min-w-0">
                   <span className="text-sm text-corporate-text font-semibold truncate">
                     {status.description}
                   </span>
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm text-gray-500">
-                      Estado: {status.code}
-                    </span>
-                    {onCancelStatus && isCancellable && (
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onCancelStatus(status);
-                        }}
-                        className="p-0.5 text-gray-400 hover:text-red-500 transition-colors"
-                        title="Anular estado"
-                      >
-                        <XCircle className="w-4 h-4" />
-                      </button>
-                    )}
-                  </div>
+                  <span className="text-sm text-gray-500">
+                    ({status.code})
+                  </span>
+                  {onCancelStatus && isCancellable && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onCancelStatus(status);
+                      }}
+                      className="p-0.5 text-gray-400 hover:text-red-500 transition-colors"
+                      title="Anular estado"
+                    >
+                      <XCircle className="w-4 h-4" />
+                    </button>
+                  )}
                 </div>
               </div>
-              <div className="flex items-center gap-2 flex-shrink-0">
-                {packageEvents.length > 0 && (
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-sm text-gray-500 font-medium">
-                      {packageEvents.length}
-                    </span>
-                    {expandedStates[status.event_date] ? (
-                      <ChevronDown className="w-4 h-4 text-gray-400" />
-                    ) : (
-                      <ChevronRight className="w-4 h-4 text-gray-400" />
-                    )}
-                  </div>
-                )}
-              </div>
+              {packageEvents.length > 0 && (
+                <div className="flex items-center gap-1.5">
+                  <span className="text-sm text-gray-500 font-medium">
+                    {packageEvents.length}
+                  </span>
+                  {expandedStates[status.event_date] ? (
+                    <ChevronDown className="w-4 h-4 text-gray-400" />
+                  ) : (
+                    <ChevronRight className="w-4 h-4 text-gray-400" />
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Eventos del estado */}
@@ -169,12 +165,12 @@ export default function TrackingTimeline({ events, onCancelStatus, showNotificat
                 {packageEvents.map((event, index) => (
                   <div 
                     key={`${status.event_date}-${index}`} 
-                    className={`flex items-center gap-3 px-3 py-2 rounded border border-gray-200 shadow-sm
+                    className={`flex items-center gap-3 px-3 py-1.5 rounded border border-gray-200 shadow-sm
                       ${getEventBackgroundColor(dayKey)}`}
                   >
                     <div className="flex-1 flex items-center gap-3 min-w-0">
                       {getEventIcon(event.type)}
-                      <span className="text-sm text-gray-600 font-medium w-44 flex-shrink-0">
+                      <span className="text-sm text-gray-600 font-medium w-36 flex-shrink-0">
                         {formatDateTime(event.event_date)}
                       </span>
                       <div className="min-w-0">
@@ -211,7 +207,7 @@ export default function TrackingTimeline({ events, onCancelStatus, showNotificat
         <>
           <button 
             onClick={() => setShowNotificationsPanel(!showNotificationsPanel)}
-            className="w-full flex items-center gap-3 bg-white px-3 py-2 rounded border border-gray-200 shadow-sm hover:bg-gray-50 transition-colors duration-150"
+            className="w-full flex items-center gap-3 bg-white px-3 py-1.5 rounded border border-gray-200 shadow-sm hover:bg-gray-50 transition-colors duration-150"
           >
             <div className="flex items-center gap-3 flex-1">
               {getEventIcon('NOTIFICATION_V1')}
@@ -239,11 +235,11 @@ export default function TrackingTimeline({ events, onCancelStatus, showNotificat
                 return (
                   <div 
                     key={`notification-${index}`}
-                    className={`flex items-center gap-3 px-3 py-2 rounded border border-gray-200 shadow-sm
+                    className={`flex items-center gap-3 px-3 py-1.5 rounded border border-gray-200 shadow-sm
                       ${getEventBackgroundColor(dayKey)}`}
                   >
                     {getEventIcon(notification.type)}
-                    <span className="text-sm text-gray-600 font-medium w-44 flex-shrink-0">
+                    <span className="text-sm text-gray-600 font-medium w-36 flex-shrink-0">
                       {formatDateTime(notification.event_date)}
                     </span>
                     <span className="text-sm text-gray-900 truncate">

@@ -70,6 +70,18 @@ export interface ShippingData {
   declared_weight?: number;
   final_weight?: number;
   redis_info?: RedisInfo;
+  
+  // Campos adicionales de dirección
+  origin_country_code: string;
+  origin_postal_code: string;
+  origin_address: string;
+  origin_address2: string;
+  origin_town_name: string;
+  destin_country_code: string;
+  destin_postal_code: string;
+  destin_address: string;
+  destin_address2: string;
+  destin_town_name: string;
 }
 
 export type ViewMode = 'shipping' | 'packages' | 'comparison';

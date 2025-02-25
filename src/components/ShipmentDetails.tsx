@@ -52,6 +52,10 @@ export default function ShipmentDetails({ data, onCreateEvent }: Props) {
     }
   };
 
+  const formatAddress = (address: string, address2: string, postalCode: string, town: string, countryCode: string) => {
+    return `${address}, ${postalCode} ${town} (${countryCode})${address2 ? ` - ${address2}` : ''}`;
+  };
+
   return (
     <div className="bg-white rounded-lg shadow-sm border border-gray-100">
       <div 
@@ -132,22 +136,38 @@ export default function ShipmentDetails({ data, onCreateEvent }: Props) {
           </div>
 
           <div className="grid grid-cols-2 gap-6">
-            <div className="space-y-1">
-              <h4 className="text-sm font-semibold text-corporate-primary flex items-center gap-1">
+            <div>
+              <h4 className="text-sm font-semibold text-corporate-primary flex items-center gap-1 mb-1">
                 <User className="w-4 h-4" />
                 Remitente
               </h4>
               <p className="text-sm text-gray-900">{data.sender_name}</p>
-              <p className="text-sm text-gray-600">{data.sender_address}</p>
+              <p className="text-sm text-gray-600">
+                {formatAddress(
+                  data.origin_address,
+                  data.origin_address2,
+                  data.origin_postal_code,
+                  data.origin_town_name,
+                  data.origin_country_code
+                )}
+              </p>
             </div>
             
-            <div className="space-y-1">
-              <h4 className="text-sm font-semibold text-corporate-primary flex items-center gap-1">
+            <div>
+              <h4 className="text-sm font-semibold text-corporate-primary flex items-center gap-1 mb-1">
                 <MapPin className="w-4 h-4" />
                 Destinatario
               </h4>
               <p className="text-sm text-gray-900">{data.recipient_name}</p>
-              <p className="text-sm text-gray-600">{data.recipient_address}</p>
+              <p className="text-sm text-gray-600">
+                {formatAddress(
+                  data.destin_address,
+                  data.destin_address2,
+                  data.destin_postal_code,
+                  data.destin_town_name,
+                  data.destin_country_code
+                )}
+              </p>
             </div>
           </div>
         </div>
