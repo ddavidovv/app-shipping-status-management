@@ -1,12 +1,30 @@
+export type EventType = 
+  | 'EVENT'
+  | 'SHIPPING_ITEM_EVENT_V1'
+  | 'STATUS'
+  | 'NOTIFICATION_V1';
+
+export type StatusCode = 
+  | '1500' // En reparto
+  | '1600' // Reparto fallido
+  | '1200' // Delegación destino
+  | '0900' // En tránsito
+  | string; // Otros códigos de estado
+
+export type EventTypeCode = 
+  | 'SORTER_READ_EVENT' // Lectura de clasificadora
+  | 'MANUAL_SCAN'       // Escaneo manual
+  | string;             // Otros tipos de eventos
+
 export interface ShippingEvent {
-  code: string;
+  code: StatusCode;
   description: string;
-  type: 'STATUS' | 'PACKAGE_EVENT' | 'NOTIFICATION_V1';
+  type: EventType;
   event_date: string;
   detail: {
     event_longitude_gps?: string | null;
     event_latitude_gps?: string | null;
-    shipping_status_code?: string;
+    shipping_status_code?: StatusCode;
     event_courier_code?: string | null;
     signee_name?: string | null;
     event_text?: string;
@@ -40,14 +58,14 @@ export interface ShippingData {
   shipping_code: string;
   main_shipping_code: string;
   prime_shipping_code?: string;
-  last_shipping_status_code?: string;
+  last_shipping_status_code?: StatusCode;
   origin_province_name: string;
   destin_province_name: string;
   recipient_name: string;
   sender_name: string;
   recipient_address: string;
   sender_address: string;
-  shipping_status_code: string;
+  shipping_status_code: StatusCode;
   item_count?: number;
   declared_weight?: number;
   final_weight?: number;

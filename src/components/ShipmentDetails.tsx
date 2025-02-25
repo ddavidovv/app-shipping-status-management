@@ -65,13 +65,13 @@ export default function ShipmentDetails({ data, onCreateEvent }: Props) {
           {/* Indicadores de estado */}
           <div className="flex gap-2 ml-4">
             {hasChanges && (
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-100 text-blue-800 text-xs font-medium rounded-full">
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-100 text-blue-800 text-sm font-medium rounded-full">
                 <AlertCircle className="w-3 h-3" />
                 Con cambios
               </span>
             )}
             {needsRelabeling && (
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-yellow-100 text-yellow-800 text-xs font-medium rounded-full">
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-yellow-100 text-yellow-800 text-sm font-medium rounded-full">
                 <Tag className="w-3 h-3" />
                 Relabeling
               </span>
@@ -86,7 +86,7 @@ export default function ShipmentDetails({ data, onCreateEvent }: Props) {
                 handleResetFlags();
               }}
               disabled={isResetting}
-              className="flex items-center gap-1 px-2 py-1 text-xs bg-gray-100 text-gray-700 rounded hover:bg-gray-200 disabled:opacity-50"
+              className="flex items-center gap-1 px-2 py-1 text-sm bg-gray-100 text-gray-700 rounded hover:bg-gray-200 disabled:opacity-50"
             >
               <RefreshCw className={`w-3 h-3 ${isResetting ? 'animate-spin' : ''}`} />
               {isResetting ? 'Reseteando...' : 'Resetear Flags'}
@@ -98,7 +98,7 @@ export default function ShipmentDetails({ data, onCreateEvent }: Props) {
               handlePrintLabel();
             }}
             disabled={isPrinting}
-            className="flex items-center gap-1 px-2 py-1 text-xs bg-gray-100 text-gray-700 rounded hover:bg-gray-200 disabled:opacity-50"
+            className="flex items-center gap-1 px-2 py-1 text-sm bg-gray-100 text-gray-700 rounded hover:bg-gray-200 disabled:opacity-50"
           >
             <Printer className="w-3 h-3" />
             {isPrinting ? 'Imprimiendo...' : 'Imprimir Etiqueta'}
@@ -108,7 +108,7 @@ export default function ShipmentDetails({ data, onCreateEvent }: Props) {
               e.stopPropagation();
               onCreateEvent();
             }}
-            className="flex items-center gap-1 px-2 py-1 text-xs bg-red-900 text-white rounded hover:bg-red-800"
+            className="flex items-center gap-1 px-2 py-1 text-sm bg-red-900 text-white rounded hover:bg-red-800"
           >
             <Plus className="w-3 h-3" />
             Crear Evento

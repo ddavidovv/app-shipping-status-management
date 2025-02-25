@@ -38,7 +38,7 @@ export default function PackagesList({ packages, onCancelStatus }: Props) {
                 <Box className="w-5 h-5 text-corporate-primary" />
                 <div className="space-y-1">
                   <div className="flex items-center gap-2">
-                    <h3 className="text-lg font-semibold text-corporate-primary">
+                    <h3 className="text-sm font-semibold text-corporate-primary">
                       Bulto {pkg.package_number}
                     </h3>
                     {lastStatus && (

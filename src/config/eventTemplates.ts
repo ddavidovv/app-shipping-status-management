@@ -1,5 +1,7 @@
+import { EventTypeCode } from '../types';
+
 interface EventTemplate {
-  event_type_code: string;
+  event_type_code: EventTypeCode;
   description: string;
   template: {
     metadata: {
@@ -19,7 +21,7 @@ interface EventTemplate {
         sndid_code: string;
       }>;
       event_source_code: string;
-      event_type_code: string;
+      event_type_code: EventTypeCode;
       event_type_version: string;
     };
   };

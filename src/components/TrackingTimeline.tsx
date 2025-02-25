@@ -1,7 +1,7 @@
 import { ShippingEvent } from '../types';
 import { Mail, Package, Truck, CheckCircle2, ChevronDown, ChevronRight, XCircle } from 'lucide-react';
 import { useState } from 'react';
-import { isStatusCancellable } from '../config/eventConfig';
+import { isStatusCancellable, EVENT_TYPE_ICONS, EVENT_TYPE_DESCRIPTIONS, EVENT_TYPE_COLORS } from '../config/eventConfig';
 
 interface Props {
   events: ShippingEvent[];
@@ -23,16 +23,8 @@ const formatDateTime = (dateStr: string): string => {
 };
 
 const getEventIcon = (type: string) => {
-  switch (type) {
-    case 'NOTIFICATION_V1':
-      return <Mail className="w-5 h-5 text-corporate-primary" />;
-    case 'PACKAGE_EVENT':
-      return <Truck className="w-5 h-5 text-corporate-primary" />;
-    case 'STATUS':
-      return <CheckCircle2 className="w-5 h-5 text-corporate-primary" />;
-    default:
-      return <Package className="w-5 h-5 text-corporate-primary" />;
-  }
+  const Icon = EVENT_TYPE_ICONS[type] || Package;
+  return <Icon className={`w-5 h-5 ${EVENT_TYPE_COLORS[type] || 'text-gray-500'}`} />;
 };
 
 interface GroupedEvents {
@@ -82,7 +74,7 @@ export default function TrackingTimeline({ events, onCancelStatus, showNotificat
     const packageEvents = events.filter(event => {
       const eventDate = new Date(event.event_date).getTime();
       return (
-        event.type === 'PACKAGE_EVENT' &&
+        (event.type === 'EVENT' || event.type === 'SHIPPING_ITEM_EVENT_V1') &&
         eventDate <= currentStatusDate &&
         (nextStatusDate === 0 || eventDate > nextStatusDate)
       );
@@ -137,7 +129,7 @@ export default function TrackingTimeline({ events, onCancelStatus, showNotificat
                     {status.description}
                   </span>
                   <div className="flex items-center gap-2">
-                    <span className="text-xs text-gray-500">
+                    <span className="text-sm text-gray-500">
                       Estado: {status.code}
                     </span>
                     {onCancelStatus && isCancellable && (
@@ -158,7 +150,7 @@ export default function TrackingTimeline({ events, onCancelStatus, showNotificat
               <div className="flex items-center gap-2 flex-shrink-0">
                 {packageEvents.length > 0 && (
                   <div className="flex items-center gap-1.5">
-                    <span className="text-xs text-gray-500 font-medium">
+                    <span className="text-sm text-gray-500 font-medium">
                       {packageEvents.length}
                     </span>
                     {expandedStates[status.event_date] ? (
@@ -186,9 +178,14 @@ export default function TrackingTimeline({ events, onCancelStatus, showNotificat
                         {formatDateTime(event.event_date)}
                       </span>
                       <div className="min-w-0">
-                        <span className="text-sm text-gray-900 truncate block">
-                          {event.description}
-                        </span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm text-gray-900 truncate">
+                            {event.description}
+                          </span>
+                          <span className={`text-sm px-2 py-0.5 rounded-full ${EVENT_TYPE_COLORS[event.type] || 'bg-gray-100 text-gray-600'} bg-opacity-10`}>
+                            {EVENT_TYPE_DESCRIPTIONS[event.type] || 'Evento'}
+                          </span>
+                        </div>
                         {event.detail?.event_text && (
                           <span className="text-sm text-gray-600 block truncate">
                             ({event.detail.event_text})
@@ -217,13 +214,13 @@ export default function TrackingTimeline({ events, onCancelStatus, showNotificat
             className="w-full flex items-center gap-3 bg-white px-3 py-2 rounded border border-gray-200 shadow-sm hover:bg-gray-50 transition-colors duration-150"
           >
             <div className="flex items-center gap-3 flex-1">
-              <Mail className="w-5 h-5 text-corporate-primary flex-shrink-0" />
+              {getEventIcon('NOTIFICATION_V1')}
               <span className="text-sm text-corporate-text font-semibold">
                 Notificaciones
               </span>
             </div>
             <div className="flex items-center gap-1.5">
-              <span className="text-xs text-gray-500 font-medium">
+              <span className="text-sm text-gray-500 font-medium">
                 {notifications.length}
               </span>
               {showNotificationsPanel ? (
@@ -245,7 +242,7 @@ export default function TrackingTimeline({ events, onCancelStatus, showNotificat
                     className={`flex items-center gap-3 px-3 py-2 rounded border border-gray-200 shadow-sm
                       ${getEventBackgroundColor(dayKey)}`}
                   >
-                    <Mail className="w-5 h-5 text-corporate-primary" />
+                    {getEventIcon(notification.type)}
                     <span className="text-sm text-gray-600 font-medium w-44 flex-shrink-0">
                       {formatDateTime(notification.event_date)}
                     </span>

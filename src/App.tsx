@@ -33,19 +33,19 @@ function App() {
   const [bulkResults, setBulkResults] = useState<BulkSearchResult[]>([]);
   const [selectedTracking, setSelectedTracking] = useState<string | null>(null);
 
-  const transformToPackages = (itemsHistory: ItemHistory[]): Package[] => {
-    return itemsHistory.map(item => {
-      const packageNumber = parseInt(item.item_code.slice(-3));
-      return {
-        item_code: item.item_code,
-        events: item.events,
-        package_number: packageNumber
-      };
-    });
+  const transformToPackages = (data: ShippingData): Package[] => {
+    if (!data.items_history || data.items_history.length === 0) {
+      return [];
+    }
+    return data.items_history.map((item, index) => ({
+      item_code: item.item_code,
+      events: item.events,
+      package_number: index + 1
+    }));
   };
 
   const fetchShipment = async (tracking: string): Promise<ShippingData> => {
-    const response = await fetch(`${import.meta.env.VITE_API_URL}${import.meta.env.VITE_API_ENDPOINT}/${tracking}?view=OPERATIONS&show_items=true`, {
+    const response = await fetch(`${import.meta.env.VITE_API_URL}${import.meta.env.VITE_API_ENDPOINT}/${tracking}?view=OPERATIONS&showItems=true`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
@@ -65,10 +65,12 @@ function App() {
       throw new Error('No se encontró historial para este envío');
     }
 
+    // Extraer los datos del envío de la respuesta
     const historyData = result.item_history_info.data;
 
-    if (result.redis_info?.error) {
-      console.warn('Redis info error:', result.redis_info.error);
+    // Asegurarnos de que items_history existe y es un array
+    if (!historyData.items_history) {
+      historyData.items_history = [];
     }
 
     return {
@@ -186,7 +188,7 @@ function App() {
   const renderContent = () => {
     if (!shipmentData) return null;
 
-    const packages = shipmentData.shipping_history.packages || [];
+    const packages = transformToPackages(shipmentData);
 
     switch (viewMode) {
       case 'packages':
@@ -280,7 +282,7 @@ function App() {
                 <ViewModeSelector
                   viewMode={viewMode}
                   onViewModeChange={setViewMode}
-                  packagesCount={shipmentData.items_history?.length || 0}
+                  packagesCount={transformToPackages(shipmentData).length}
                 />
                 
                 {renderContent()}

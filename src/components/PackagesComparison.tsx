@@ -34,7 +34,7 @@ export default function PackagesComparison({ packages }: Props) {
   return (
     <div className="space-y-6">
       <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">
+        <h3 className="text-sm font-semibold text-gray-900 mb-4">
           Selecciona hasta 2 bultos para comparar
         </h3>
         <div className="flex flex-wrap gap-2">
@@ -42,7 +42,7 @@ export default function PackagesComparison({ packages }: Props) {
             <button
               key={pkg.item_code}
               onClick={() => togglePackageSelection(pkg.item_code)}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg border transition-colors
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg border transition-colors text-sm
                 ${selectedPackages.includes(pkg.item_code)
                   ? 'bg-corporate-primary text-white border-corporate-primary'
                   : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'}`}
@@ -61,7 +61,7 @@ export default function PackagesComparison({ packages }: Props) {
               <div className="flex items-center gap-2 mb-4">
                 <Box className="w-5 h-5 text-corporate-primary" />
                 <div>
-                  <h3 className="text-lg font-semibold text-corporate-primary">
+                  <h3 className="text-sm font-semibold text-corporate-primary">
                     Bulto {pkg.package_number}
                   </h3>
                   <p className="text-sm text-gray-600">
