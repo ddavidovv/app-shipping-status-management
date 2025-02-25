@@ -12,7 +12,7 @@ export default function ViewModeSelector({ viewMode, onViewModeChange, packagesC
     <div className="flex gap-2 mb-6">
       <button
         onClick={() => onViewModeChange('shipping')}
-        className={`flex items-center gap-2 px-4 py-2 rounded-lg border transition-colors
+        className={`flex items-center gap-2 px-4 py-2 rounded-lg border transition-colors text-sm
           ${viewMode === 'shipping' 
             ? 'bg-corporate-primary text-white border-corporate-primary' 
             : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'}`}
@@ -23,7 +23,7 @@ export default function ViewModeSelector({ viewMode, onViewModeChange, packagesC
       
       <button
         onClick={() => onViewModeChange('packages')}
-        className={`flex items-center gap-2 px-4 py-2 rounded-lg border transition-colors
+        className={`flex items-center gap-2 px-4 py-2 rounded-lg border transition-colors text-sm
           ${viewMode === 'packages'
             ? 'bg-corporate-primary text-white border-corporate-primary'
             : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'}`}
@@ -32,16 +32,18 @@ export default function ViewModeSelector({ viewMode, onViewModeChange, packagesC
         <span>Bultos ({packagesCount})</span>
       </button>
 
-      <button
-        onClick={() => onViewModeChange('comparison')}
-        className={`flex items-center gap-2 px-4 py-2 rounded-lg border transition-colors
-          ${viewMode === 'comparison'
-            ? 'bg-corporate-primary text-white border-corporate-primary'
-            : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'}`}
-      >
-        <GitCompare className="w-4 h-4" />
-        <span>Comparar Bultos</span>
-      </button>
+      {packagesCount > 1 && (
+        <button
+          onClick={() => onViewModeChange('comparison')}
+          className={`flex items-center gap-2 px-4 py-2 rounded-lg border transition-colors text-sm
+            ${viewMode === 'comparison'
+              ? 'bg-corporate-primary text-white border-corporate-primary'
+              : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'}`}
+        >
+          <GitCompare className="w-4 h-4" />
+          <span>Comparar Bultos</span>
+        </button>
+      )}
     </div>
   );
 }

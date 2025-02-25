@@ -128,7 +128,7 @@ export default function TrackingTimeline({ events, onCancelStatus, showNotificat
                   <span className="text-sm text-corporate-text font-semibold truncate">
                     {status.description}
                   </span>
-                  <span className="text-sm text-gray-500">
+                  <span className="text-xs text-gray-400">
                     ({status.code})
                   </span>
                   {onCancelStatus && isCancellable && (
@@ -178,7 +178,7 @@ export default function TrackingTimeline({ events, onCancelStatus, showNotificat
                           <span className="text-sm text-gray-900 truncate">
                             {event.description}
                           </span>
-                          <span className={`text-sm px-2 py-0.5 rounded-full ${EVENT_TYPE_COLORS[event.type] || 'bg-gray-100 text-gray-600'} bg-opacity-10`}>
+                          <span className={`text-xs px-2 py-0.5 rounded-full ${EVENT_TYPE_COLORS[event.type] || 'bg-gray-100 text-gray-600'} bg-opacity-10`}>
                             {EVENT_TYPE_DESCRIPTIONS[event.type] || 'Evento'}
                           </span>
                         </div>

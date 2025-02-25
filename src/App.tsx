@@ -83,8 +83,9 @@ function App() {
     if (!trackingNumber.trim()) return;
 
     // Detectar si es una búsqueda múltiple
+    // Dividir por comas, tabulaciones o saltos de línea
     const trackingNumbers = trackingNumber
-      .split(/[\n,]/)
+      .split(/[\n,\t]+/)
       .map(t => t.trim())
       .filter(t => t.length > 0);
 
@@ -139,6 +140,13 @@ function App() {
     }
   };
 
+  const handleKeyPress = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault(); // Prevenir el salto de línea
+      handleSearch();
+    }
+  };
+
   const handleBulkSelect = (tracking: string) => {
     setSelectedTracking(tracking);
     const result = bulkResults.find(r => r.trackingNumber === tracking);
@@ -185,6 +193,16 @@ function App() {
     }
   };
 
+  const handleViewModeChange = (mode: ViewMode) => {
+    const packages = shipmentData ? transformToPackages(shipmentData) : [];
+    // Si intentamos cambiar a modo comparación y no hay suficientes bultos, mantenemos el modo envío
+    if (mode === 'comparison' && packages.length <= 1) {
+      setViewMode('shipping');
+    } else {
+      setViewMode(mode);
+    }
+  };
+
   const renderContent = () => {
     if (!shipmentData) return null;
 
@@ -225,13 +243,14 @@ function App() {
               <textarea
                 value={trackingNumber}
                 onChange={(e) => setTrackingNumber(e.target.value)}
-                placeholder="Introduce uno o varios números de seguimiento (separados por comas o saltos de línea)"
+                onKeyDown={handleKeyPress}
+                placeholder="Introduce uno o varios números de seguimiento (separados por comas, tabulaciones o saltos de línea)"
                 className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 min-h-[80px]"
                 disabled={loading}
               />
               <p className="mt-1 text-sm text-gray-500">
                 <Upload className="w-4 h-4 inline-block mr-1" />
-                Puedes pegar múltiples envíos desde Excel
+                Puedes pegar múltiples envíos desde Excel (usa Shift + Enter para añadir saltos de línea)
               </p>
             </div>
             <button
@@ -281,7 +300,7 @@ function App() {
                 
                 <ViewModeSelector
                   viewMode={viewMode}
-                  onViewModeChange={setViewMode}
+                  onViewModeChange={handleViewModeChange}
                   packagesCount={transformToPackages(shipmentData).length}
                 />
                 
