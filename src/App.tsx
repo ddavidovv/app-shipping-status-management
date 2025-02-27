@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Search, Loader2, Upload } from 'lucide-react';
+import { Search, Loader2, Upload, XCircle } from 'lucide-react';
 import { ShippingData, ShippingEvent, ViewMode, Package, ItemHistory } from './types';
 import TrackingTimeline from './components/TrackingTimeline';
 import ShipmentDetails from './components/ShipmentDetails';
@@ -11,6 +11,7 @@ import PackagesList from './components/PackagesList';
 import PackagesComparison from './components/PackagesComparison';
 import BulkSearchResults from './components/BulkSearchResults';
 import { eventService } from './services/eventService';
+import { useAuth } from './context/AuthContext';
 
 interface BulkSearchResult {
   trackingNumber: string;
@@ -20,6 +21,7 @@ interface BulkSearchResult {
 }
 
 function App() {
+  const { isAuthenticated, loading: authLoading, error: authError } = useAuth();
   const [trackingNumber, setTrackingNumber] = useState('');
   const [shipmentData, setShipmentData] = useState<ShippingData | null>(null);
   const [loading, setLoading] = useState(false);
@@ -32,6 +34,96 @@ function App() {
   }>({ event: null, isOpen: false });
   const [bulkResults, setBulkResults] = useState<BulkSearchResult[]>([]);
   const [selectedTracking, setSelectedTracking] = useState<string | null>(null);
+
+  // Manejo del cierre de la ventana
+  const handleClose = () => {
+    try {
+      // Intentar cerrar usando window.close()
+      window.close();
+      
+      // Si window.close() no funcionó (la ventana sigue abierta), intentar redirigir
+      setTimeout(() => {
+        if (!window.closed) {
+          window.location.href = 'about:blank';
+          window.close();
+        }
+      }, 100);
+    } catch (e) {
+      console.error('Error al cerrar la ventana:', e);
+      // Como último recurso, redirigir a about:blank
+      window.location.href = 'about:blank';
+    }
+  };
+
+  // Si está cargando la autenticación, mostrar loading
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="w-8 h-8 text-corporate-primary animate-spin mx-auto mb-4" />
+          <p className="text-gray-600">Cargando...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Si hay error de autenticación, mostrar error
+  if (authError) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 max-w-md w-full">
+          <div className="text-center mb-6">
+            <XCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
+            <h2 className="text-xl font-semibold text-gray-900 mb-2">Error de autenticación</h2>
+            <p className="text-gray-600 mb-6">{authError}</p>
+            <div className="flex flex-col gap-2">
+              <button
+                onClick={handleClose}
+                className="w-full px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+              >
+                Cerrar ventana
+              </button>
+              <button
+                onClick={() => window.location.reload()}
+                className="w-full px-4 py-2 text-corporate-primary bg-white border border-corporate-primary rounded-lg hover:bg-red-50 transition-colors"
+              >
+                Reintentar
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Si no está autenticado, mostrar mensaje
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 max-w-md w-full text-center">
+          <XCircle className="w-12 h-12 text-amber-500 mx-auto mb-4" />
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">No autenticado</h2>
+          <p className="text-gray-600 mb-6">
+            Esta aplicación debe abrirse desde la aplicación principal.
+          </p>
+          <div className="flex flex-col gap-2">
+            <button
+              onClick={handleClose}
+              className="w-full px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+            >
+              Cerrar ventana
+            </button>
+            <button
+              onClick={() => window.location.reload()}
+              className="w-full px-4 py-2 text-corporate-primary bg-white border border-corporate-primary rounded-lg hover:bg-red-50 transition-colors"
+            >
+              Reintentar
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const transformToPackages = (data: ShippingData): Package[] => {
     if (!data.items_history || data.items_history.length === 0) {
@@ -65,10 +157,8 @@ function App() {
       throw new Error('No se encontró historial para este envío');
     }
 
-    // Extraer los datos del envío de la respuesta
     const historyData = result.item_history_info.data;
 
-    // Asegurarnos de que items_history existe y es un array
     if (!historyData.items_history) {
       historyData.items_history = [];
     }
@@ -82,15 +172,12 @@ function App() {
   const handleSearch = async () => {
     if (!trackingNumber.trim()) return;
 
-    // Detectar si es una búsqueda múltiple
-    // Dividir por comas, tabulaciones o saltos de línea
     const trackingNumbers = trackingNumber
       .split(/[\n,\t]+/)
       .map(t => t.trim())
       .filter(t => t.length > 0);
 
     if (trackingNumbers.length > 1) {
-      // Búsqueda múltiple
       setBulkResults(trackingNumbers.map(t => ({
         trackingNumber: t,
         data: null,
@@ -99,7 +186,6 @@ function App() {
       setShipmentData(null);
       setError('');
 
-      // Realizar búsquedas en paralelo
       const searches = trackingNumbers.map(async (t) => {
         try {
           const data = await fetchShipment(t);
@@ -121,7 +207,6 @@ function App() {
 
       await Promise.all(searches);
     } else {
-      // Búsqueda individual
       setBulkResults([]);
       setSelectedTracking(null);
       setLoading(true);
@@ -142,7 +227,7 @@ function App() {
 
   const handleKeyPress = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault(); // Prevenir el salto de línea
+      e.preventDefault();
       handleSearch();
     }
   };
@@ -195,7 +280,6 @@ function App() {
 
   const handleViewModeChange = (mode: ViewMode) => {
     const packages = shipmentData ? transformToPackages(shipmentData) : [];
-    // Si intentamos cambiar a modo comparación y no hay suficientes bultos, mantenemos el modo envío
     if (mode === 'comparison' && packages.length <= 1) {
       setViewMode('shipping');
     } else {
@@ -278,7 +362,6 @@ function App() {
         </div>
 
         <div className="flex-1 flex gap-4 min-h-0">
-          {/* Lista de resultados */}
           {bulkResults.length > 0 && (
             <div className="w-1/3 flex-shrink-0 overflow-hidden flex flex-col">
               <BulkSearchResults
@@ -289,7 +372,6 @@ function App() {
             </div>
           )}
 
-          {/* Panel de detalles */}
           {shipmentData && (
             <div className={`${bulkResults.length > 0 ? 'w-2/3' : 'w-full'} overflow-auto`}>
               <div className="space-y-4">
