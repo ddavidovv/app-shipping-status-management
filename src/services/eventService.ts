@@ -18,7 +18,8 @@ export const eventService = {
   },
 
   async cancelStatus(statusCode: string, eventDateTime: string, reason: string, userEmail: string = 'test@example.com') {
-    const url = `${import.meta.env.VITE_API_URL}/item-status-v2/v1/items/${statusCode}/status/cancel`;
+    // Construir la URL correcta para la cancelación de estado
+    const url = `${import.meta.env.VITE_API_URL}/enterprise-portal/shipping-status-mgmt/trf/item-status-v2/v1/item/${statusCode}/cancel-status`;
     
     const requestBody = {
       event_datetime: eventDateTime,
@@ -32,9 +33,12 @@ export const eventService = {
     
     try {
       const response = await fetch(url, {
-        method: 'POST',
+        method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': import.meta.env.VITE_JWT_TOKEN,
+          'client_secret': import.meta.env.VITE_CLIENT_SECRET,
+          'client_id': import.meta.env.VITE_CLIENT_ID
         },
         body: JSON.stringify(requestBody)
       });
@@ -57,6 +61,27 @@ export const eventService = {
         error: 'Error al anular el estado'
       };
     }
+  },
+
+  // Método para generar el comando curl para debug
+  generateCurlCommand(statusCode: string, eventDateTime: string, userEmail: string = 'test@example.com') {
+    const url = `${import.meta.env.VITE_API_URL}/enterprise-portal/shipping-status-mgmt/trf/item-status-v2/v1/item/${statusCode}/cancel-status`;
+    
+    const requestBody = {
+      event_datetime: eventDateTime,
+      status_id: statusCode,
+      user_id: userEmail
+    };
+
+    // Generar el comando curl
+    const curlCommand = `curl --location --request PATCH '${url}' \\
+--header 'Content-Type: application/json' \\
+--header 'client_id: ${import.meta.env.VITE_CLIENT_ID}' \\
+--header 'client_secret: ${import.meta.env.VITE_CLIENT_SECRET}' \\
+--header 'Authorization: ${import.meta.env.VITE_JWT_TOKEN}' \\
+--data '${JSON.stringify(requestBody, null, 2)}'`;
+
+    return curlCommand;
   },
 
   async resetFlags(itemCode: string) {

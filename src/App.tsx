@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Search, Loader2, Upload, XCircle } from 'lucide-react';
+import { Search, Loader2, Upload, XCircle, AlertCircle } from 'lucide-react';
 import { ShippingData, ShippingEvent, ViewMode, Package, ItemHistory } from './types';
 import TrackingTimeline from './components/TrackingTimeline';
 import ShipmentDetails from './components/ShipmentDetails';
@@ -34,6 +34,7 @@ function App() {
   }>({ event: null, isOpen: false });
   const [bulkResults, setBulkResults] = useState<BulkSearchResult[]>([]);
   const [selectedTracking, setSelectedTracking] = useState<string | null>(null);
+  const [bulkSearchError, setBulkSearchError] = useState<string | null>(null);
 
   // Manejo del cierre de la ventana
   const handleClose = () => {
@@ -171,11 +172,19 @@ function App() {
 
   const handleSearch = async () => {
     if (!trackingNumber.trim()) return;
+    
+    setBulkSearchError(null);
 
     const trackingNumbers = trackingNumber
       .split(/[\n,\t]+/)
       .map(t => t.trim())
       .filter(t => t.length > 0);
+
+    // Verificar el límite de 1000 envíos
+    if (trackingNumbers.length > 1000) {
+      setBulkSearchError(`Has excedido el límite de 1000 envíos para búsqueda masiva. Actualmente tienes ${trackingNumbers.length} envíos.`);
+      return;
+    }
 
     if (trackingNumbers.length > 1) {
       setBulkResults(trackingNumbers.map(t => ({
@@ -336,10 +345,16 @@ function App() {
                 <Upload className="w-4 h-4 inline-block mr-1" />
                 Puedes pegar múltiples envíos desde Excel (usa Shift + Enter para añadir saltos de línea)
               </p>
+              {bulkSearchError && (
+                <div className="mt-2 flex items-center gap-2 text-amber-600 bg-amber-50 p-2 rounded-md">
+                  <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                  <p className="text-sm">{bulkSearchError}</p>
+                </div>
+              )}
             </div>
             <button
               onClick={handleSearch}
-              disabled={loading || !trackingNumber.trim()}
+              disabled={loading || !trackingNumber.trim() || bulkSearchError !== null}
               className="px-6 py-2 bg-red-900 text-white rounded-lg hover:bg-red-800 focus:outline-none focus:ring-2 focus:ring-red-500 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 h-fit"
             >
               {loading ? (
@@ -406,6 +421,8 @@ function App() {
               onClose={() => setCancelEventData({ event: null, isOpen: false })}
               onCancelEvent={submitCancelEvent}
               eventDescription={cancelEventData.event?.description || ''}
+              eventCode={cancelEventData.event?.code || ''}
+              eventDate={cancelEventData.event?.event_date || ''}
             />
           </>
         )}

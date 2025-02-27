@@ -1,20 +1,27 @@
 import React, { useState } from 'react';
-import { X } from 'lucide-react';
+import { X, Code, Copy, Check } from 'lucide-react';
+import { eventService } from '../services/eventService';
 
 interface Props {
   isOpen: boolean;
   onClose: () => void;
   onCancelEvent: (eventId: string, reason: string) => void;
   eventDescription: string;
+  eventCode?: string;
+  eventDate?: string;
 }
 
 export default function CancelEventModal({
   isOpen,
   onClose,
   onCancelEvent,
-  eventDescription
+  eventDescription,
+  eventCode = '',
+  eventDate = ''
 }: Props) {
   const [reason, setReason] = useState('');
+  const [showCurl, setShowCurl] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   if (!isOpen) return null;
 
@@ -24,6 +31,14 @@ export default function CancelEventModal({
     
     onCancelEvent(eventDescription, reason.trim());
     onClose();
+  };
+
+  const curlCommand = eventService.generateCurlCommand(eventCode, eventDate);
+
+  const handleCopyClick = () => {
+    navigator.clipboard.writeText(curlCommand);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   };
 
   return (
@@ -61,6 +76,33 @@ export default function CancelEventModal({
               required
               placeholder="Explica el motivo de la anulación..."
             />
+          </div>
+
+          <div>
+            <button
+              type="button"
+              onClick={() => setShowCurl(!showCurl)}
+              className="flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900"
+            >
+              <Code className="w-4 h-4" />
+              {showCurl ? 'Ocultar comando curl' : 'Mostrar comando curl (debug)'}
+            </button>
+            
+            {showCurl && (
+              <div className="mt-2 relative">
+                <div className="bg-gray-800 text-gray-200 p-3 rounded-md text-xs overflow-x-auto">
+                  <pre className="whitespace-pre-wrap">{curlCommand}</pre>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleCopyClick}
+                  className="absolute top-2 right-2 p-1 bg-gray-700 text-gray-200 rounded hover:bg-gray-600"
+                  title="Copiar al portapapeles"
+                >
+                  {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                </button>
+              </div>
+            )}
           </div>
 
           <div className="flex justify-end gap-2 mt-6">

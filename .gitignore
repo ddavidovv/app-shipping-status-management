@@ -28,5 +28,6 @@ dist-ssr
 .env.*
 
 # Bolt specific
-boltzip/*
+./boltzip/*
 *.zip
+*.xlsx
