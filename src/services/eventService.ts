@@ -1,6 +1,4 @@
 // Simulación de endpoints para eventos
-import { useAuth } from '../context/AuthContext';
-
 export const eventService = {
   async createEvent(eventData: any) {
     // Simular llamada al backend
@@ -19,31 +17,16 @@ export const eventService = {
     };
   },
 
-  async cancelStatus(itemCode: string, eventDateTime: string, reason: string, statusName: string) {
-    // Obtener el email del usuario desde sessionStorage
-    let userEmail = 'test@example.com'; // Valor por defecto
-    
-    try {
-      const token = sessionStorage.getItem('idToken');
-      if (token) {
-        const [, payload] = token.split('.');
-        const decodedPayload = JSON.parse(atob(payload));
-        if (decodedPayload.email) {
-          userEmail = decodedPayload.email;
-        }
-      }
-    } catch (error) {
-      console.error('Error al obtener el email del usuario:', error);
-    }
+  async cancelStatus(statusCode: string, eventDateTime: string, reason: string, userEmail: string = 'test@example.com') {
+    // Extraer el nombre del estado del código (por ejemplo, "DELIVERY" de "DELIVERY (1500)")
+    const statusName = statusCode.split(' ')[0];
     
     // Construir la URL correcta para la cancelación de estado
-    // Aquí usamos el código del bulto, no el código de estado
-    const url = `${import.meta.env.VITE_API_URL}/enterprise-portal/shipping-status-mgmt/trf/item-status-v2/v1/item/${itemCode}/cancel-status`;
+    const url = `${import.meta.env.VITE_API_URL}/enterprise-portal/shipping-status-mgmt/trf/item-status-v2/v1/item/${statusName}/cancel-status`;
     
-    // En el body, status_id es el nombre del estado que queremos anular (ej: "DELIVERY")
     const requestBody = {
       event_datetime: eventDateTime,
-      status_id: statusName, // Aquí va el nombre del estado, no el código
+      status_id: statusName, // Usar el nombre del estado en lugar del código
       user_id: userEmail
     };
 
@@ -78,36 +61,21 @@ export const eventService = {
       console.error('Error cancelling status:', err);
       return {
         success: false,
-        error: err instanceof Error ? err.message : 'Error al anular el estado'
+        error: 'Error al anular el estado'
       };
     }
   },
 
   // Método para generar el comando curl para debug
-  generateCurlCommand(itemCode: string, eventDateTime: string, statusName: string) {
-    // Obtener el email del usuario desde sessionStorage
-    let userEmail = 'test@example.com'; // Valor por defecto
+  generateCurlCommand(statusCode: string, eventDateTime: string, userEmail: string = 'test@example.com') {
+    // Extraer el nombre del estado del código (por ejemplo, "DELIVERY" de "DELIVERY (1500)")
+    const statusName = statusCode.split(' ')[0];
     
-    try {
-      const token = sessionStorage.getItem('idToken');
-      if (token) {
-        const [, payload] = token.split('.');
-        const decodedPayload = JSON.parse(atob(payload));
-        if (decodedPayload.email) {
-          userEmail = decodedPayload.email;
-        }
-      }
-    } catch (error) {
-      console.error('Error al obtener el email del usuario:', error);
-    }
+    const url = `${import.meta.env.VITE_API_URL}/enterprise-portal/shipping-status-mgmt/trf/item-status-v2/v1/item/${statusName}/cancel-status`;
     
-    // Aquí usamos el código del bulto en la URL
-    const url = `${import.meta.env.VITE_API_URL}/enterprise-portal/shipping-status-mgmt/trf/item-status-v2/v1/item/${itemCode}/cancel-status`;
-    
-    // En el body, status_id es el nombre del estado que queremos anular
     const requestBody = {
       event_datetime: eventDateTime,
-      status_id: statusName, // Aquí va el nombre del estado, no el código
+      status_id: statusName, // Usar el nombre del estado en lugar del código
       user_id: userEmail
     };
 

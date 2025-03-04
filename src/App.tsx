@@ -31,8 +31,6 @@ function App() {
   const [cancelEventData, setCancelEventData] = useState<{
     event: ShippingEvent;
     isOpen: boolean;
-    packageCode?: string;
-    packageNumber?: number;
   }>({ event: null, isOpen: false });
   const [bulkResults, setBulkResults] = useState<BulkSearchResult[]>([]);
   const [selectedTracking, setSelectedTracking] = useState<string | null>(null);
@@ -264,53 +262,18 @@ function App() {
     }
   };
 
-  const handleCancelStatus = async (status: ShippingEvent, packageCode?: string, packageNumber?: number) => {
-    setCancelEventData({ 
-      event: status, 
-      isOpen: true,
-      packageCode,
-      packageNumber
-    });
+  const handleCancelStatus = async (status: ShippingEvent) => {
+    setCancelEventData({ event: status, isOpen: true });
   };
 
   const submitCancelEvent = async (eventId: string, reason: string) => {
     try {
       if (!shipmentData || !cancelEventData.event) return;
 
-      // Usamos el packageCode que viene directamente del evento de cancelación
-      const itemCode = cancelEventData.packageCode || '';
-      
-      // Extraer el nombre del estado de la descripción
-      // Por ejemplo, de "En reparto" extraemos "DELIVERY"
-      const getStatusName = (description: string): string => {
-        // Mapeo de descripciones a nombres de estado
-        const statusMap: Record<string, string> = {
-          'En reparto': 'DELIVERY',
-          'Reparto fallido': 'DELIVERY_FAILED',
-          'Entregado': 'DELIVERED',
-          'Depositado en PUDO': 'DELIVERED_PUDO',
-          'Delegación destino': 'DESTINATION_BRANCH',
-          'En tránsito': 'IN_TRANSIT'
-        };
-        
-        // Buscar coincidencia exacta
-        for (const [desc, name] of Object.entries(statusMap)) {
-          if (description.includes(desc)) {
-            return name;
-          }
-        }
-        
-        // Si no hay coincidencia, usar la descripción como fallback
-        return description;
-      };
-      
-      const statusName = getStatusName(cancelEventData.event.description);
-
       const result = await eventService.cancelStatus(
-        itemCode,
+        cancelEventData.event.description,
         cancelEventData.event.event_date,
-        reason,
-        statusName // Nombre del estado para el payload
+        reason
       );
 
       if (result.success) {
@@ -357,7 +320,7 @@ function App() {
         return (
           <TrackingTimeline
             events={shipmentData.shipping_history.events}
-            onCancelStatus={null} // Desactivamos la anulación a nivel de envío
+            onCancelStatus={handleCancelStatus}
           />
         );
     }
@@ -460,8 +423,6 @@ function App() {
               eventDescription={cancelEventData.event?.description || ''}
               eventCode={cancelEventData.event?.code || ''}
               eventDate={cancelEventData.event?.event_date || ''}
-              packageCode={cancelEventData.packageCode}
-              packageNumber={cancelEventData.packageNumber}
             />
           </>
         )}

@@ -1,7 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { X, Code, Copy, Check, Loader2, AlertCircle, Box } from 'lucide-react';
+import React, { useState } from 'react';
+import { X, Code, Copy, Check } from 'lucide-react';
 import { eventService } from '../services/eventService';
-import { useAuth } from '../context/AuthContext';
 
 interface Props {
   isOpen: boolean;
@@ -10,8 +9,6 @@ interface Props {
   eventDescription: string;
   eventCode?: string;
   eventDate?: string;
-  packageCode?: string;
-  packageNumber?: number;
 }
 
 export default function CancelEventModal({
@@ -20,104 +17,23 @@ export default function CancelEventModal({
   onCancelEvent,
   eventDescription,
   eventCode = '',
-  eventDate = '',
-  packageCode = '',
-  packageNumber = 0
+  eventDate = ''
 }: Props) {
-  const { userEmail } = useAuth();
   const [reason, setReason] = useState('');
   const [showCurl, setShowCurl] = useState(false);
   const [copied, setCopied] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [result, setResult] = useState<{ success: boolean; message: string } | null>(null);
-
-  // Extraer el nombre del estado de la descripción
-  // Por ejemplo, de "En reparto" extraemos "DELIVERY"
-  const getStatusName = (description: string, code: string): string => {
-    // Mapeo de descripciones a nombres de estado
-    const statusMap: Record<string, string> = {
-      'En reparto': 'DELIVERY',
-      'Reparto fallido': 'DELIVERY_FAILED',
-      'Entregado': 'DELIVERED',
-      'Depositado en PUDO': 'DELIVERED_PUDO',
-      'Delegación destino': 'DESTINATION_BRANCH',
-      'En tránsito': 'IN_TRANSIT'
-    };
-    
-    // Buscar coincidencia exacta
-    for (const [desc, name] of Object.entries(statusMap)) {
-      if (description.includes(desc)) {
-        return name;
-      }
-    }
-    
-    // Si no hay coincidencia, usar el código como fallback
-    return code;
-  };
-
-  // Obtener el nombre del estado
-  const statusName = getStatusName(eventDescription, eventCode);
-
-  useEffect(() => {
-    if (isOpen) {
-      // Reset state when modal opens
-      setReason('');
-      setShowCurl(false);
-      setCopied(false);
-      setIsSubmitting(false);
-      setResult(null);
-    }
-  }, [isOpen]);
 
   if (!isOpen) return null;
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!reason.trim() || isSubmitting) return;
+    if (!reason.trim()) return;
     
-    setIsSubmitting(true);
-    setResult(null);
-    
-    try {
-      // Aquí usamos el código del bulto (packageCode) en la URL, y el nombre del estado en el payload
-      const response = await eventService.cancelStatus(
-        packageCode || '', // Código del bulto para la URL
-        eventDate, 
-        reason,
-        statusName // Nombre del estado para el payload
-      );
-      
-      if (response.success) {
-        setResult({
-          success: true,
-          message: 'Estado anulado correctamente'
-        });
-        // Wait a moment before closing to show success message
-        setTimeout(() => {
-          onCancelEvent(eventDescription, reason.trim());
-          onClose();
-        }, 1500);
-      } else {
-        setResult({
-          success: false,
-          message: response.error || 'Error al anular el estado'
-        });
-        setIsSubmitting(false);
-      }
-    } catch (error) {
-      setResult({
-        success: false,
-        message: error instanceof Error ? error.message : 'Error al anular el estado'
-      });
-      setIsSubmitting(false);
-    }
+    onCancelEvent(eventDescription, reason.trim());
+    onClose();
   };
 
-  const curlCommand = eventService.generateCurlCommand(
-    packageCode || '', // Código del bulto para la URL
-    eventDate,
-    statusName // Nombre del estado para el payload
-  );
+  const curlCommand = eventService.generateCurlCommand(eventCode, eventDate);
 
   const handleCopyClick = () => {
     navigator.clipboard.writeText(curlCommand);
@@ -133,7 +49,6 @@ export default function CancelEventModal({
           <button
             onClick={onClose}
             className="text-gray-500 hover:text-gray-700"
-            disabled={isSubmitting}
           >
             <X className="w-5 h-5" />
           </button>
@@ -145,21 +60,9 @@ export default function CancelEventModal({
               Evento a anular
             </label>
             <p className="text-sm text-gray-600 bg-gray-50 p-2 rounded">
-              {eventDescription} <span className="text-xs text-gray-400">({eventCode})</span>
-            </p>
-            <p className="text-xs text-gray-500 mt-1">
-              Nombre del estado: <span className="font-mono">{statusName}</span>
+              {eventDescription} ({eventCode})
             </p>
           </div>
-
-          {packageCode && (
-            <div className="flex items-center gap-2 bg-blue-50 p-2 rounded">
-              <Box className="w-4 h-4 text-blue-600" />
-              <div className="text-sm text-blue-800">
-                <span className="font-medium">Bulto {packageNumber || ''}:</span> {packageCode}
-              </div>
-            </div>
-          )}
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -172,36 +75,17 @@ export default function CancelEventModal({
               rows={3}
               required
               placeholder="Explica el motivo de la anulación..."
-              disabled={isSubmitting}
             />
           </div>
-
-          <div className="bg-blue-50 p-3 rounded-md text-sm text-blue-800">
-            <p>La anulación se registrará a nombre de: <strong>{userEmail || 'Usuario no identificado'}</strong></p>
-          </div>
-
-          {result && (
-            <div className={`p-3 rounded-md text-sm ${result.success ? 'bg-green-50 text-green-800' : 'bg-red-50 text-red-800'}`}>
-              <div className="flex items-center gap-2">
-                {result.success ? (
-                  <Check className="w-4 h-4 flex-shrink-0" />
-                ) : (
-                  <AlertCircle className="w-4 h-4 flex-shrink-0" />
-                )}
-                <p>{result.message}</p>
-              </div>
-            </div>
-          )}
 
           <div>
             <button
               type="button"
               onClick={() => setShowCurl(!showCurl)}
               className="flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900"
-              disabled={isSubmitting}
             >
               <Code className="w-4 h-4" />
-              {showCurl ? 'Ocultar comando curl (debug)' : 'Mostrar comando curl (debug)'}
+              {showCurl ? 'Ocultar comando curl' : 'Mostrar comando curl (debug)'}
             </button>
             
             {showCurl && (
@@ -226,23 +110,14 @@ export default function CancelEventModal({
               type="button"
               onClick={onClose}
               className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
-              disabled={isSubmitting}
             >
               Cancelar
             </button>
             <button
               type="submit"
-              disabled={isSubmitting || !reason.trim()}
-              className="px-4 py-2 text-sm font-medium text-white bg-red-900 rounded-md hover:bg-red-800 disabled:opacity-50 flex items-center gap-2"
+              className="px-4 py-2 text-sm font-medium text-white bg-red-900 rounded-md hover:bg-red-800"
             >
-              {isSubmitting ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  <span>Procesando...</span>
-                </>
-              ) : (
-                <span>Anular Evento</span>
-              )}
+              Anular Evento
             </button>
           </div>
         </form>
