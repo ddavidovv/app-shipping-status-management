@@ -31,6 +31,33 @@ export default function CancelEventModal({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [result, setResult] = useState<{ success: boolean; message: string } | null>(null);
 
+  // Extraer el nombre del estado de la descripción
+  // Por ejemplo, de "En reparto" extraemos "DELIVERY"
+  const getStatusName = (description: string, code: string): string => {
+    // Mapeo de descripciones a nombres de estado
+    const statusMap: Record<string, string> = {
+      'En reparto': 'DELIVERY',
+      'Reparto fallido': 'DELIVERY_FAILED',
+      'Entregado': 'DELIVERED',
+      'Depositado en PUDO': 'DELIVERED_PUDO',
+      'Delegación destino': 'DESTINATION_BRANCH',
+      'En tránsito': 'IN_TRANSIT'
+    };
+    
+    // Buscar coincidencia exacta
+    for (const [desc, name] of Object.entries(statusMap)) {
+      if (description.includes(desc)) {
+        return name;
+      }
+    }
+    
+    // Si no hay coincidencia, usar el código como fallback
+    return code;
+  };
+
+  // Obtener el nombre del estado
+  const statusName = getStatusName(eventDescription, eventCode);
+
   useEffect(() => {
     if (isOpen) {
       // Reset state when modal opens
@@ -52,12 +79,12 @@ export default function CancelEventModal({
     setResult(null);
     
     try {
-      // Aquí usamos el código del bulto (packageCode) en la URL, y el código de estado (eventCode) en el payload
+      // Aquí usamos el código del bulto (packageCode) en la URL, y el nombre del estado en el payload
       const response = await eventService.cancelStatus(
         packageCode || '', // Código del bulto para la URL
         eventDate, 
         reason,
-        eventCode // Código de estado para el payload
+        statusName // Nombre del estado para el payload
       );
       
       if (response.success) {
@@ -89,7 +116,7 @@ export default function CancelEventModal({
   const curlCommand = eventService.generateCurlCommand(
     packageCode || '', // Código del bulto para la URL
     eventDate,
-    eventCode // Código de estado para el payload
+    statusName // Nombre del estado para el payload
   );
 
   const handleCopyClick = () => {
@@ -119,6 +146,9 @@ export default function CancelEventModal({
             </label>
             <p className="text-sm text-gray-600 bg-gray-50 p-2 rounded">
               {eventDescription} <span className="text-xs text-gray-400">({eventCode})</span>
+            </p>
+            <p className="text-xs text-gray-500 mt-1">
+              Nombre del estado: <span className="font-mono">{statusName}</span>
             </p>
           </div>
 

@@ -28,6 +28,7 @@ export interface ShippingEvent {
     event_courier_code?: string | null;
     signee_name?: string | null;
     event_text?: string;
+    status_name?: string; // Nombre del estado (ej: "DELIVERY")
     [key: string]: any;
   } | null;
 }
