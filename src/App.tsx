@@ -280,37 +280,11 @@ function App() {
       // Usamos el packageCode que viene directamente del evento de cancelación
       const itemCode = cancelEventData.packageCode || '';
       
-      // Extraer el nombre del estado de la descripción
-      // Por ejemplo, de "En reparto" extraemos "DELIVERY"
-      const getStatusName = (description: string): string => {
-        // Mapeo de descripciones a nombres de estado
-        const statusMap: Record<string, string> = {
-          'En reparto': 'DELIVERY',
-          'Reparto fallido': 'DELIVERY_FAILED',
-          'Entregado': 'DELIVERED',
-          'Depositado en PUDO': 'DELIVERED_PUDO',
-          'Delegación destino': 'DESTINATION_BRANCH',
-          'En tránsito': 'IN_TRANSIT'
-        };
-        
-        // Buscar coincidencia exacta
-        for (const [desc, name] of Object.entries(statusMap)) {
-          if (description.includes(desc)) {
-            return name;
-          }
-        }
-        
-        // Si no hay coincidencia, usar la descripción como fallback
-        return description;
-      };
-      
-      const statusName = getStatusName(cancelEventData.event.description);
-
       const result = await eventService.cancelStatus(
         itemCode,
         cancelEventData.event.event_date,
         reason,
-        statusName // Nombre del estado para el payload
+        cancelEventData.event.description // Usamos directamente la descripción del evento
       );
 
       if (result.success) {

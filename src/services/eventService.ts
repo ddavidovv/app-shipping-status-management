@@ -19,7 +19,7 @@ export const eventService = {
     };
   },
 
-  async cancelStatus(itemCode: string, eventDateTime: string, reason: string, statusName: string) {
+  async cancelStatus(itemCode: string, eventDateTime: string, reason: string, statusDescription: string) {
     // Obtener el email del usuario desde sessionStorage
     let userEmail = 'test@example.com'; // Valor por defecto
     
@@ -37,13 +37,12 @@ export const eventService = {
     }
     
     // Construir la URL correcta para la cancelación de estado
-    // Aquí usamos el código del bulto, no el código de estado
     const url = `${import.meta.env.VITE_API_URL}/enterprise-portal/shipping-status-mgmt/trf/item-status-v2/v1/item/${itemCode}/cancel-status`;
     
-    // En el body, status_id es el nombre del estado que queremos anular (ej: "DELIVERY")
+    // En el body, status_id es la descripción del estado que queremos anular
     const requestBody = {
       event_datetime: eventDateTime,
-      status_id: statusName, // Aquí va el nombre del estado, no el código
+      status_id: statusDescription,
       user_id: userEmail
     };
 
@@ -84,7 +83,7 @@ export const eventService = {
   },
 
   // Método para generar el comando curl para debug
-  generateCurlCommand(itemCode: string, eventDateTime: string, statusName: string) {
+  generateCurlCommand(itemCode: string, eventDateTime: string, statusDescription: string) {
     // Obtener el email del usuario desde sessionStorage
     let userEmail = 'test@example.com'; // Valor por defecto
     
@@ -104,10 +103,10 @@ export const eventService = {
     // Aquí usamos el código del bulto en la URL
     const url = `${import.meta.env.VITE_API_URL}/enterprise-portal/shipping-status-mgmt/trf/item-status-v2/v1/item/${itemCode}/cancel-status`;
     
-    // En el body, status_id es el nombre del estado que queremos anular
+    // En el body, status_id es la descripción del estado que queremos anular
     const requestBody = {
       event_datetime: eventDateTime,
-      status_id: statusName, // Aquí va el nombre del estado, no el código
+      status_id: statusDescription,
       user_id: userEmail
     };
 
