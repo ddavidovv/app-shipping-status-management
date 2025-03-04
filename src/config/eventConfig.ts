@@ -3,10 +3,10 @@ import { Package, Truck, Mail, CheckCircle2, Box, CircleDot } from 'lucide-react
 
 // Estados que pueden ser anulados
 export const CANCELLABLE_STATUS_CODES: StatusCode[] = [
+  '2100', // Entregado
+  '2300', // Depositado en PUDO
   '1500', // En reparto
-  '1600', // Reparto fallido
-  '1200', // Delegación destino
-  '0900'  // En tránsito
+  '1600', // Reparto Fallido
 ];
 
 // Función helper para verificar si un estado es anulable

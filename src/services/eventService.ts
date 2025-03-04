@@ -1,4 +1,6 @@
 // Simulación de endpoints para eventos
+import { useAuth } from '../context/AuthContext';
+
 export const eventService = {
   async createEvent(eventData: any) {
     // Simular llamada al backend
@@ -17,7 +19,23 @@ export const eventService = {
     };
   },
 
-  async cancelStatus(statusCode: string, eventDateTime: string, reason: string, userEmail: string = 'test@example.com') {
+  async cancelStatus(statusCode: string, eventDateTime: string, reason: string) {
+    // Obtener el email del usuario desde sessionStorage
+    let userEmail = 'test@example.com'; // Valor por defecto
+    
+    try {
+      const token = sessionStorage.getItem('idToken');
+      if (token) {
+        const [, payload] = token.split('.');
+        const decodedPayload = JSON.parse(atob(payload));
+        if (decodedPayload.email) {
+          userEmail = decodedPayload.email;
+        }
+      }
+    } catch (error) {
+      console.error('Error al obtener el email del usuario:', error);
+    }
+    
     // Construir la URL correcta para la cancelación de estado
     const url = `${import.meta.env.VITE_API_URL}/enterprise-portal/shipping-status-mgmt/trf/item-status-v2/v1/item/${statusCode}/cancel-status`;
     
@@ -64,7 +82,23 @@ export const eventService = {
   },
 
   // Método para generar el comando curl para debug
-  generateCurlCommand(statusCode: string, eventDateTime: string, userEmail: string = 'test@example.com') {
+  generateCurlCommand(statusCode: string, eventDateTime: string) {
+    // Obtener el email del usuario desde sessionStorage
+    let userEmail = 'test@example.com'; // Valor por defecto
+    
+    try {
+      const token = sessionStorage.getItem('idToken');
+      if (token) {
+        const [, payload] = token.split('.');
+        const decodedPayload = JSON.parse(atob(payload));
+        if (decodedPayload.email) {
+          userEmail = decodedPayload.email;
+        }
+      }
+    } catch (error) {
+      console.error('Error al obtener el email del usuario:', error);
+    }
+    
     const url = `${import.meta.env.VITE_API_URL}/enterprise-portal/shipping-status-mgmt/trf/item-status-v2/v1/item/${statusCode}/cancel-status`;
     
     const requestBody = {

@@ -1,5 +1,5 @@
 import { ShippingEvent } from '../types';
-import { Mail, Package, Truck, CheckCircle2, ChevronDown, ChevronRight, XCircle, Code } from 'lucide-react';
+import { Mail, Package, Truck, CheckCircle2, ChevronDown, ChevronRight, XCircle } from 'lucide-react';
 import { useState } from 'react';
 import { isStatusCancellable, EVENT_TYPE_ICONS, EVENT_TYPE_DESCRIPTIONS, EVENT_TYPE_COLORS } from '../config/eventConfig';
 import { eventService } from '../services/eventService';
@@ -49,25 +49,6 @@ export default function TrackingTimeline({ events, onCancelStatus, showNotificat
       ...prev,
       [statusDate]: !prev[statusDate]
     }));
-  };
-
-  const toggleCurlView = (statusDate: string) => {
-    setShowCurlFor(prev => prev === statusDate ? null : statusDate);
-  };
-
-  const handleCopyClick = (status: ShippingEvent) => {
-    const curlCommand = eventService.generateCurlCommand(status.code, status.event_date);
-    navigator.clipboard.writeText(curlCommand);
-    setCopiedStatus(prev => ({
-      ...prev,
-      [status.event_date]: true
-    }));
-    setTimeout(() => {
-      setCopiedStatus(prev => ({
-        ...prev,
-        [status.event_date]: false
-      }));
-    }, 2000);
   };
 
   // Separar notificaciones y estados
@@ -127,13 +108,18 @@ export default function TrackingTimeline({ events, onCancelStatus, showNotificat
     return dayIndex === 0 ? 'bg-gray-50/80' : 'bg-blue-50/30';
   };
 
+  // Determinar si un estado es el último (más reciente)
+  const isLatestStatus = (status: ShippingEvent): boolean => {
+    if (statusEvents.length === 0) return false;
+    return status.event_date === statusEvents[0].event_date;
+  };
+
   return (
     <div className="w-full space-y-1">
       {/* Estados y sus eventos */}
       {groupedEvents.map(({ status, events: packageEvents, dayKey }) => {
-        const isCancellable = isStatusCancellable(status.code);
-        const curlCommand = eventService.generateCurlCommand(status.code, status.event_date);
-        const isCopied = copiedStatus[status.event_date] || false;
+        const isLatest = isLatestStatus(status);
+        const isCancellable = isLatestStatus(status) && isStatusCancellable(status.code);
         
         return (
           <div key={status.event_date} className="space-y-1">
@@ -161,16 +147,6 @@ export default function TrackingTimeline({ events, onCancelStatus, showNotificat
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          toggleCurlView(status.event_date);
-                        }}
-                        className="p-0.5 text-gray-400 hover:text-blue-500 transition-colors"
-                        title="Ver comando curl"
-                      >
-                        <Code className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
                           onCancelStatus(status);
                         }}
                         className="p-0.5 text-gray-400 hover:text-red-500 transition-colors"
@@ -179,6 +155,11 @@ export default function TrackingTimeline({ events, onCancelStatus, showNotificat
                         <XCircle className="w-4 h-4" />
                       </button>
                     </div>
+                  )}
+                  {!isLatest && (
+                    <span className="text-xs text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full">
+                      No es el último estado
+                    </span>
                   )}
                 </div>
               </div>
@@ -195,26 +176,6 @@ export default function TrackingTimeline({ events, onCancelStatus, showNotificat
                 </div>
               )}
             </div>
-
-            {/* Mostrar el comando curl si está seleccionado */}
-            {showCurlFor === status.event_date && (
-              <div className="ml-8 relative">
-                <div className="bg-gray-800 text-gray-200 p-3 rounded-md text-xs overflow-x-auto">
-                  <pre className="whitespace-pre-wrap">{curlCommand}</pre>
-                </div>
-                <button
-                  onClick={() => handleCopyClick(status)}
-                  className="absolute top-2 right-2 p-1 bg-gray-700 text-gray-200 rounded hover:bg-gray-600"
-                  title="Copiar al portapapeles"
-                >
-                  {isCopied ? (
-                    <CheckCircle2 className="w-4 h-4 text-green-400" />
-                  ) : (
-                    <Code className="w-4 h-4" />
-                  )}
-                </button>
-              </div>
-            )}
 
             {/* Eventos del estado */}
             {expandedStates[status.event_date] && packageEvents.length > 0 && (
@@ -234,9 +195,6 @@ export default function TrackingTimeline({ events, onCancelStatus, showNotificat
                         <div className="flex items-center gap-2">
                           <span className="text-sm text-gray-900 truncate">
                             {event.description}
-                          </span>
-                          <span className={`text-xs px-2 py-0.5 rounded-full ${EVENT_TYPE_COLORS[event.type] || 'bg-gray-100 text-gray-600'} bg-opacity-10`}>
-                            {EVENT_TYPE_DESCRIPTIONS[event.type] || 'Evento'}
                           </span>
                         </div>
                         {event.detail?.event_text && (
