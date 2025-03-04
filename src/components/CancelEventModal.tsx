@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
-import { X, Code, Copy, Check } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { X, Code, Copy, Check, Loader2, AlertCircle } from 'lucide-react';
 import { eventService } from '../services/eventService';
+import { useAuth } from '../context/AuthContext';
 
 interface Props {
   isOpen: boolean;
@@ -19,18 +20,60 @@ export default function CancelEventModal({
   eventCode = '',
   eventDate = ''
 }: Props) {
+  const { userEmail } = useAuth();
   const [reason, setReason] = useState('');
   const [showCurl, setShowCurl] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [result, setResult] = useState<{ success: boolean; message: string } | null>(null);
+
+  useEffect(() => {
+    if (isOpen) {
+      // Reset state when modal opens
+      setReason('');
+      setShowCurl(false);
+      setCopied(false);
+      setIsSubmitting(false);
+      setResult(null);
+    }
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!reason.trim()) return;
+    if (!reason.trim() || isSubmitting) return;
     
-    onCancelEvent(eventDescription, reason.trim());
-    onClose();
+    setIsSubmitting(true);
+    setResult(null);
+    
+    try {
+      const response = await eventService.cancelStatus(eventCode, eventDate, reason);
+      
+      if (response.success) {
+        setResult({
+          success: true,
+          message: 'Estado anulado correctamente'
+        });
+        // Wait a moment before closing to show success message
+        setTimeout(() => {
+          onCancelEvent(eventDescription, reason.trim());
+          onClose();
+        }, 1500);
+      } else {
+        setResult({
+          success: false,
+          message: response.error || 'Error al anular el estado'
+        });
+        setIsSubmitting(false);
+      }
+    } catch (error) {
+      setResult({
+        success: false,
+        message: error instanceof Error ? error.message : 'Error al anular el estado'
+      });
+      setIsSubmitting(false);
+    }
   };
 
   const curlCommand = eventService.generateCurlCommand(eventCode, eventDate);
@@ -49,6 +92,7 @@ export default function CancelEventModal({
           <button
             onClick={onClose}
             className="text-gray-500 hover:text-gray-700"
+            disabled={isSubmitting}
           >
             <X className="w-5 h-5" />
           </button>
@@ -75,14 +119,33 @@ export default function CancelEventModal({
               rows={3}
               required
               placeholder="Explica el motivo de la anulación..."
+              disabled={isSubmitting}
             />
           </div>
+
+          <div className="bg-blue-50 p-3 rounded-md text-sm text-blue-800">
+            <p>La anulación se registrará a nombre de: <strong>{userEmail || 'Usuario no identificado'}</strong></p>
+          </div>
+
+          {result && (
+            <div className={`p-3 rounded-md text-sm ${result.success ? 'bg-green-50 text-green-800' : 'bg-red-50 text-red-800'}`}>
+              <div className="flex items-center gap-2">
+                {result.success ? (
+                  <Check className="w-4 h-4 flex-shrink-0" />
+                ) : (
+                  <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                )}
+                <p>{result.message}</p>
+              </div>
+            </div>
+          )}
 
           <div>
             <button
               type="button"
               onClick={() => setShowCurl(!showCurl)}
               className="flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900"
+              disabled={isSubmitting}
             >
               <Code className="w-4 h-4" />
               {showCurl ? 'Ocultar comando curl' : 'Mostrar comando curl (debug)'}
@@ -110,14 +173,23 @@ export default function CancelEventModal({
               type="button"
               onClick={onClose}
               className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
+              disabled={isSubmitting}
             >
               Cancelar
             </button>
             <button
               type="submit"
-              className="px-4 py-2 text-sm font-medium text-white bg-red-900 rounded-md hover:bg-red-800"
+              disabled={isSubmitting || !reason.trim()}
+              className="px-4 py-2 text-sm font-medium text-white bg-red-900 rounded-md hover:bg-red-800 disabled:opacity-50 flex items-center gap-2"
             >
-              Anular Evento
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>Procesando...</span>
+                </>
+              ) : (
+                <span>Anular Evento</span>
+              )}
             </button>
           </div>
         </form>

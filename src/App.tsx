@@ -270,6 +270,7 @@ function App() {
     try {
       if (!shipmentData || !cancelEventData.event) return;
 
+      // Aquí usamos el item_code en lugar del código de estado
       const result = await eventService.cancelStatus(
         cancelEventData.event.code,
         cancelEventData.event.event_date,
@@ -320,7 +321,7 @@ function App() {
         return (
           <TrackingTimeline
             events={shipmentData.shipping_history.events}
-            onCancelStatus={handleCancelStatus}
+            onCancelStatus={null} // Desactivamos la anulación a nivel de envío
           />
         );
     }

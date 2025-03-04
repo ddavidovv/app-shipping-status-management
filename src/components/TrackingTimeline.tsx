@@ -119,7 +119,7 @@ export default function TrackingTimeline({ events, onCancelStatus, showNotificat
       {/* Estados y sus eventos */}
       {groupedEvents.map(({ status, events: packageEvents, dayKey }) => {
         const isLatest = isLatestStatus(status);
-        const isCancellable = isLatestStatus(status) && isStatusCancellable(status.code);
+        const isCancellable = isLatest && isStatusCancellable(status.code);
         
         return (
           <div key={status.event_date} className="space-y-1">
@@ -128,6 +128,7 @@ export default function TrackingTimeline({ events, onCancelStatus, showNotificat
               className={`w-full flex items-center gap-3 px-3 py-1.5 rounded border border-gray-200 shadow-sm
                 ${packageEvents.length > 0 ? 'cursor-pointer' : ''} 
                 ${getBackgroundColor(dayKey, packageEvents.length > 0)} 
+                ${isLatest ? 'border-green-300' : ''}
                 transition-colors duration-150`}
             >
               <div className="flex items-center gap-3 flex-1 min-w-0">
@@ -156,9 +157,9 @@ export default function TrackingTimeline({ events, onCancelStatus, showNotificat
                       </button>
                     </div>
                   )}
-                  {!isLatest && (
-                    <span className="text-xs text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full">
-                      No es el último estado
+                  {isLatest && (
+                    <span className="text-xs text-green-600 bg-green-50 px-2 py-0.5 rounded-full">
+                      Último estado
                     </span>
                   )}
                 </div>

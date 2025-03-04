@@ -19,7 +19,7 @@ export const eventService = {
     };
   },
 
-  async cancelStatus(statusCode: string, eventDateTime: string, reason: string) {
+  async cancelStatus(itemCode: string, eventDateTime: string, reason: string) {
     // Obtener el email del usuario desde sessionStorage
     let userEmail = 'test@example.com'; // Valor por defecto
     
@@ -37,11 +37,11 @@ export const eventService = {
     }
     
     // Construir la URL correcta para la cancelación de estado
-    const url = `${import.meta.env.VITE_API_URL}/enterprise-portal/shipping-status-mgmt/trf/item-status-v2/v1/item/${statusCode}/cancel-status`;
+    const url = `${import.meta.env.VITE_API_URL}/enterprise-portal/shipping-status-mgmt/trf/item-status-v2/v1/item/${itemCode}/cancel-status`;
     
     const requestBody = {
       event_datetime: eventDateTime,
-      status_id: statusCode,
+      status_id: itemCode,
       user_id: userEmail
     };
 
@@ -76,13 +76,13 @@ export const eventService = {
       console.error('Error cancelling status:', err);
       return {
         success: false,
-        error: 'Error al anular el estado'
+        error: err instanceof Error ? err.message : 'Error al anular el estado'
       };
     }
   },
 
   // Método para generar el comando curl para debug
-  generateCurlCommand(statusCode: string, eventDateTime: string) {
+  generateCurlCommand(itemCode: string, eventDateTime: string) {
     // Obtener el email del usuario desde sessionStorage
     let userEmail = 'test@example.com'; // Valor por defecto
     
@@ -99,11 +99,11 @@ export const eventService = {
       console.error('Error al obtener el email del usuario:', error);
     }
     
-    const url = `${import.meta.env.VITE_API_URL}/enterprise-portal/shipping-status-mgmt/trf/item-status-v2/v1/item/${statusCode}/cancel-status`;
+    const url = `${import.meta.env.VITE_API_URL}/enterprise-portal/shipping-status-mgmt/trf/item-status-v2/v1/item/${itemCode}/cancel-status`;
     
     const requestBody = {
       event_datetime: eventDateTime,
-      status_id: statusCode,
+      status_id: itemCode,
       user_id: userEmail
     };
 

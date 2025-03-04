@@ -5,9 +5,10 @@ import { Box } from 'lucide-react';
 
 interface Props {
   packages: Package[];
+  onCancelStatus?: (status: any) => void;
 }
 
-export default function PackagesComparison({ packages }: Props) {
+export default function PackagesComparison({ packages, onCancelStatus }: Props) {
   const [selectedPackages, setSelectedPackages] = useState<string[]>([]);
 
   const togglePackageSelection = (itemCode: string) => {
@@ -71,7 +72,7 @@ export default function PackagesComparison({ packages }: Props) {
               </div>
               <TrackingTimeline
                 events={pkg.events}
-                onCancelStatus={undefined}
+                onCancelStatus={onCancelStatus}
                 showNotifications={false}
               />
             </div>
