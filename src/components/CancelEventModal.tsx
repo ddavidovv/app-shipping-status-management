@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Code, Copy, Check, Loader2, AlertCircle } from 'lucide-react';
+import { X, Code, Copy, Check, Loader2, AlertCircle, Box } from 'lucide-react';
 import { eventService } from '../services/eventService';
 import { useAuth } from '../context/AuthContext';
 
@@ -10,6 +10,8 @@ interface Props {
   eventDescription: string;
   eventCode?: string;
   eventDate?: string;
+  packageCode?: string;
+  packageNumber?: number;
 }
 
 export default function CancelEventModal({
@@ -18,7 +20,9 @@ export default function CancelEventModal({
   onCancelEvent,
   eventDescription,
   eventCode = '',
-  eventDate = ''
+  eventDate = '',
+  packageCode = '',
+  packageNumber = 0
 }: Props) {
   const { userEmail } = useAuth();
   const [reason, setReason] = useState('');
@@ -48,7 +52,12 @@ export default function CancelEventModal({
     setResult(null);
     
     try {
-      const response = await eventService.cancelStatus(eventCode, eventDate, reason);
+      // Aquí usamos el código del bulto (packageCode), no el código de estado (eventCode)
+      const response = await eventService.cancelStatus(
+        packageCode || eventCode, // Usar packageCode si está disponible
+        eventDate, 
+        reason
+      );
       
       if (response.success) {
         setResult({
@@ -76,7 +85,10 @@ export default function CancelEventModal({
     }
   };
 
-  const curlCommand = eventService.generateCurlCommand(eventCode, eventDate);
+  const curlCommand = eventService.generateCurlCommand(
+    packageCode || eventCode, // Usar packageCode si está disponible
+    eventDate
+  );
 
   const handleCopyClick = () => {
     navigator.clipboard.writeText(curlCommand);
@@ -107,6 +119,15 @@ export default function CancelEventModal({
               {eventDescription}
             </p>
           </div>
+
+          {packageCode && (
+            <div className="flex items-center gap-2 bg-blue-50 p-2 rounded">
+              <Box className="w-4 h-4 text-blue-600" />
+              <div className="text-sm text-blue-800">
+                <span className="font-medium">Bulto {packageNumber || ''}:</span> {packageCode}
+              </div>
+            </div>
+          )}
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -148,7 +169,7 @@ export default function CancelEventModal({
               disabled={isSubmitting}
             >
               <Code className="w-4 h-4" />
-              {showCurl ? 'Ocultar comando curl' : 'Mostrar comando curl (debug)'}
+              {showCurl ? 'Ocultar comando curl (debug)' : 'Mostrar comando curl (debug)'}
             </button>
             
             {showCurl && (

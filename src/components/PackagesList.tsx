@@ -5,7 +5,7 @@ import TrackingTimeline from './TrackingTimeline';
 
 interface Props {
   packages: Package[];
-  onCancelStatus?: (status: any) => void;
+  onCancelStatus?: (status: any, packageCode?: string, packageNumber?: number) => void;
 }
 
 export default function PackagesList({ packages, onCancelStatus }: Props) {
@@ -63,7 +63,10 @@ export default function PackagesList({ packages, onCancelStatus }: Props) {
               <div className="p-4 border-t border-gray-100">
                 <TrackingTimeline
                   events={pkg.events}
-                  onCancelStatus={onCancelStatus}
+                  onCancelStatus={onCancelStatus ? 
+                    (status) => onCancelStatus(status, pkg.item_code, pkg.package_number) : 
+                    undefined
+                  }
                 />
               </div>
             )}

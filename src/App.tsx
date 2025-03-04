@@ -31,6 +31,8 @@ function App() {
   const [cancelEventData, setCancelEventData] = useState<{
     event: ShippingEvent;
     isOpen: boolean;
+    packageCode?: string;
+    packageNumber?: number;
   }>({ event: null, isOpen: false });
   const [bulkResults, setBulkResults] = useState<BulkSearchResult[]>([]);
   const [selectedTracking, setSelectedTracking] = useState<string | null>(null);
@@ -262,21 +264,21 @@ function App() {
     }
   };
 
-  const handleCancelStatus = async (status: ShippingEvent) => {
-    setCancelEventData({ event: status, isOpen: true });
+  const handleCancelStatus = async (status: ShippingEvent, packageCode?: string, packageNumber?: number) => {
+    setCancelEventData({ 
+      event: status, 
+      isOpen: true,
+      packageCode,
+      packageNumber
+    });
   };
 
   const submitCancelEvent = async (eventId: string, reason: string) => {
     try {
       if (!shipmentData || !cancelEventData.event) return;
 
-      // Aquí necesitamos pasar el item_code del bulto, no el código de estado
-      // Obtenemos el item_code del bulto desde el evento
-      const packageWithEvent = shipmentData.items_history.find(item => 
-        item.events.some(e => e.event_date === cancelEventData.event.event_date && e.code === cancelEventData.event.code)
-      );
-      
-      const itemCode = packageWithEvent ? packageWithEvent.item_code : cancelEventData.event.code;
+      // Usamos el packageCode que viene directamente del evento de cancelación
+      const itemCode = cancelEventData.packageCode || '';
 
       const result = await eventService.cancelStatus(
         itemCode,
@@ -431,6 +433,8 @@ function App() {
               eventDescription={cancelEventData.event?.description || ''}
               eventCode={cancelEventData.event?.code || ''}
               eventDate={cancelEventData.event?.event_date || ''}
+              packageCode={cancelEventData.packageCode}
+              packageNumber={cancelEventData.packageNumber}
             />
           </>
         )}

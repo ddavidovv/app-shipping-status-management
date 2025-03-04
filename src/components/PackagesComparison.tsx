@@ -5,7 +5,7 @@ import { Box } from 'lucide-react';
 
 interface Props {
   packages: Package[];
-  onCancelStatus?: (status: any) => void;
+  onCancelStatus?: (status: any, packageCode?: string, packageNumber?: number) => void;
 }
 
 export default function PackagesComparison({ packages, onCancelStatus }: Props) {
@@ -72,7 +72,10 @@ export default function PackagesComparison({ packages, onCancelStatus }: Props) 
               </div>
               <TrackingTimeline
                 events={pkg.events}
-                onCancelStatus={onCancelStatus}
+                onCancelStatus={onCancelStatus ? 
+                  (status) => onCancelStatus(status, pkg.item_code, pkg.package_number) : 
+                  undefined
+                }
                 showNotifications={false}
               />
             </div>
