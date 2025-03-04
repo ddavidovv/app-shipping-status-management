@@ -283,7 +283,8 @@ function App() {
       const result = await eventService.cancelStatus(
         itemCode,
         cancelEventData.event.event_date,
-        reason
+        reason,
+        cancelEventData.event.code
       );
 
       if (result.success) {

@@ -19,7 +19,7 @@ export const eventService = {
     };
   },
 
-  async cancelStatus(itemCode: string, eventDateTime: string, reason: string) {
+  async cancelStatus(itemCode: string, eventDateTime: string, reason: string, statusCode: string) {
     // Obtener el email del usuario desde sessionStorage
     let userEmail = 'test@example.com'; // Valor por defecto
     
@@ -41,10 +41,9 @@ export const eventService = {
     const url = `${import.meta.env.VITE_API_URL}/enterprise-portal/shipping-status-mgmt/trf/item-status-v2/v1/item/${itemCode}/cancel-status`;
     
     // En el body, status_id es el código de estado que queremos anular
-    // Esto podría ser diferente del itemCode que es el código del bulto
     const requestBody = {
       event_datetime: eventDateTime,
-      status_id: itemCode, // Aquí debería ir el código de estado, no el código del bulto
+      status_id: statusCode, // Aquí va el código de estado, no el código del bulto
       user_id: userEmail
     };
 
@@ -85,7 +84,7 @@ export const eventService = {
   },
 
   // Método para generar el comando curl para debug
-  generateCurlCommand(itemCode: string, eventDateTime: string) {
+  generateCurlCommand(itemCode: string, eventDateTime: string, statusCode: string) {
     // Obtener el email del usuario desde sessionStorage
     let userEmail = 'test@example.com'; // Valor por defecto
     
@@ -108,7 +107,7 @@ export const eventService = {
     // En el body, status_id es el código de estado que queremos anular
     const requestBody = {
       event_datetime: eventDateTime,
-      status_id: itemCode, // Aquí debería ir el código de estado, no el código del bulto
+      status_id: statusCode, // Aquí va el código de estado, no el código del bulto
       user_id: userEmail
     };
 

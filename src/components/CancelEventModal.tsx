@@ -52,11 +52,12 @@ export default function CancelEventModal({
     setResult(null);
     
     try {
-      // Aquí usamos el código del bulto (packageCode), no el código de estado (eventCode)
+      // Aquí usamos el código del bulto (packageCode) en la URL, y el código de estado (eventCode) en el payload
       const response = await eventService.cancelStatus(
-        packageCode || eventCode, // Usar packageCode si está disponible
+        packageCode || '', // Código del bulto para la URL
         eventDate, 
-        reason
+        reason,
+        eventCode // Código de estado para el payload
       );
       
       if (response.success) {
@@ -86,8 +87,9 @@ export default function CancelEventModal({
   };
 
   const curlCommand = eventService.generateCurlCommand(
-    packageCode || eventCode, // Usar packageCode si está disponible
-    eventDate
+    packageCode || '', // Código del bulto para la URL
+    eventDate,
+    eventCode // Código de estado para el payload
   );
 
   const handleCopyClick = () => {
@@ -116,7 +118,7 @@ export default function CancelEventModal({
               Evento a anular
             </label>
             <p className="text-sm text-gray-600 bg-gray-50 p-2 rounded">
-              {eventDescription}
+              {eventDescription} <span className="text-xs text-gray-400">({eventCode})</span>
             </p>
           </div>
 
