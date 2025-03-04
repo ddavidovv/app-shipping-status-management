@@ -19,7 +19,7 @@ export const eventService = {
     };
   },
 
-  async cancelStatus(itemCode: string, eventDateTime: string, reason: string) {
+  async cancelStatus(statusCode: string, eventDateTime: string, reason: string) {
     // Obtener el email del usuario desde sessionStorage
     let userEmail = 'test@example.com'; // Valor por defecto
     
@@ -37,11 +37,13 @@ export const eventService = {
     }
     
     // Construir la URL correcta para la cancelación de estado
+    // Aquí usamos el código del bulto, no el código de estado
+    const itemCode = statusCode; // Renombrar para claridad
     const url = `${import.meta.env.VITE_API_URL}/enterprise-portal/shipping-status-mgmt/trf/item-status-v2/v1/item/${itemCode}/cancel-status`;
     
     const requestBody = {
       event_datetime: eventDateTime,
-      status_id: itemCode,
+      status_id: statusCode, // Usar el código de estado aquí
       user_id: userEmail
     };
 
@@ -82,7 +84,7 @@ export const eventService = {
   },
 
   // Método para generar el comando curl para debug
-  generateCurlCommand(itemCode: string, eventDateTime: string) {
+  generateCurlCommand(statusCode: string, eventDateTime: string) {
     // Obtener el email del usuario desde sessionStorage
     let userEmail = 'test@example.com'; // Valor por defecto
     
@@ -99,11 +101,13 @@ export const eventService = {
       console.error('Error al obtener el email del usuario:', error);
     }
     
+    // Aquí usamos el código del bulto, no el código de estado
+    const itemCode = statusCode; // Renombrar para claridad
     const url = `${import.meta.env.VITE_API_URL}/enterprise-portal/shipping-status-mgmt/trf/item-status-v2/v1/item/${itemCode}/cancel-status`;
     
     const requestBody = {
       event_datetime: eventDateTime,
-      status_id: itemCode,
+      status_id: statusCode, // Usar el código de estado aquí
       user_id: userEmail
     };
 

@@ -270,9 +270,16 @@ function App() {
     try {
       if (!shipmentData || !cancelEventData.event) return;
 
-      // Aquí usamos el item_code en lugar del código de estado
+      // Aquí necesitamos pasar el item_code del bulto, no el código de estado
+      // Obtenemos el item_code del bulto desde el evento
+      const packageWithEvent = shipmentData.items_history.find(item => 
+        item.events.some(e => e.event_date === cancelEventData.event.event_date && e.code === cancelEventData.event.code)
+      );
+      
+      const itemCode = packageWithEvent ? packageWithEvent.item_code : cancelEventData.event.code;
+
       const result = await eventService.cancelStatus(
-        cancelEventData.event.code,
+        itemCode,
         cancelEventData.event.event_date,
         reason
       );
