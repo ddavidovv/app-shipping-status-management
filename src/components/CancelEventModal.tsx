@@ -52,7 +52,6 @@ export default function CancelEventModal({
     setResult(null);
     
     try {
-      // Aquí usamos el código del bulto (packageCode) en la URL, y la descripción del estado en el payload
       const response = await eventService.cancelStatus(
         packageCode || '', // Código del bulto para la URL
         eventDate, 
@@ -68,20 +67,19 @@ export default function CancelEventModal({
         // Wait a moment before closing to show success message
         setTimeout(() => {
           onCancelEvent(eventDescription, reason.trim());
-          onClose();
         }, 1500);
       } else {
         setResult({
           success: false,
           message: response.error || 'Error al anular el estado'
         });
-        setIsSubmitting(false);
       }
     } catch (error) {
       setResult({
         success: false,
         message: error instanceof Error ? error.message : 'Error al anular el estado'
       });
+    } finally {
       setIsSubmitting(false);
     }
   };
@@ -98,13 +96,19 @@ export default function CancelEventModal({
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const handleClose = () => {
+    if (!isSubmitting) {
+      onClose();
+    }
+  };
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-white rounded-lg p-6 w-full max-w-md">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-xl font-semibold text-gray-900">Anular Evento</h2>
           <button
-            onClick={onClose}
+            onClick={handleClose}
             className="text-gray-500 hover:text-gray-700"
             disabled={isSubmitting}
           >
@@ -185,7 +189,7 @@ export default function CancelEventModal({
                   className="absolute top-2 right-2 p-1 bg-gray-700 text-gray-200 rounded hover:bg-gray-600"
                   title="Copiar al portapapeles"
                 >
-                 {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                  {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
                 </button>
               </div>
             )}
@@ -194,7 +198,7 @@ export default function CancelEventModal({
           <div className="flex justify-end gap-2 mt-6">
             <button
               type="button"
-              onClick={onClose}
+              onClick={handleClose}
               className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
               disabled={isSubmitting}
             >

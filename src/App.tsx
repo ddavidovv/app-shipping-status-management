@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { Search, Loader2, Upload, XCircle, AlertCircle } from 'lucide-react';
-import { ShippingData, ShippingEvent, ViewMode, Package, ItemHistory } from './types';
+import { XCircle, Loader2 } from 'lucide-react';
+import { ViewMode, Package } from './types';
 import TrackingTimeline from './components/TrackingTimeline';
 import ShipmentDetails from './components/ShipmentDetails';
 import Header from './components/Header';
@@ -10,41 +10,44 @@ import ViewModeSelector from './components/ViewModeSelector';
 import PackagesList from './components/PackagesList';
 import PackagesComparison from './components/PackagesComparison';
 import BulkSearchResults from './components/BulkSearchResults';
+import SearchBar from './components/SearchBar';
 import { eventService } from './services/eventService';
 import { useAuth } from './context/AuthContext';
-
-interface BulkSearchResult {
-  trackingNumber: string;
-  data: ShippingData | null;
-  error?: string;
-  loading: boolean;
-}
+import { useShipmentSearch } from './hooks/useShipmentSearch';
+import QuickDeliveryModal from './components/QuickDeliveryModal';
+import { deliveryService } from './services/deliveryService';
 
 function App() {
   const { isAuthenticated, loading: authLoading, error: authError } = useAuth();
-  const [trackingNumber, setTrackingNumber] = useState('');
-  const [shipmentData, setShipmentData] = useState<ShippingData | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
   const [viewMode, setViewMode] = useState<ViewMode>('shipping');
   const [isCreateEventModalOpen, setIsCreateEventModalOpen] = useState(false);
+  const [isDeliveryModalOpen, setIsDeliveryModalOpen] = useState(false);
   const [cancelEventData, setCancelEventData] = useState<{
-    event: ShippingEvent;
+    event: any;
     isOpen: boolean;
     packageCode?: string;
     packageNumber?: number;
   }>({ event: null, isOpen: false });
-  const [bulkResults, setBulkResults] = useState<BulkSearchResult[]>([]);
-  const [selectedTracking, setSelectedTracking] = useState<string | null>(null);
-  const [bulkSearchError, setBulkSearchError] = useState<string | null>(null);
 
-  // Manejo del cierre de la ventana
+  const {
+    trackingNumber,
+    setTrackingNumber,
+    shipmentData,
+    loading,
+    error,
+    bulkResults,
+    selectedTracking,
+    bulkSearchError,
+    isExpanded,
+    handleSearch,
+    handleKeyPress,
+    handleBulkSelect,
+    setIsExpanded
+  } = useShipmentSearch();
+
   const handleClose = () => {
     try {
-      // Intentar cerrar usando window.close()
       window.close();
-      
-      // Si window.close() no funcionó (la ventana sigue abierta), intentar redirigir
       setTimeout(() => {
         if (!window.closed) {
           window.location.href = 'about:blank';
@@ -53,12 +56,10 @@ function App() {
       }, 100);
     } catch (e) {
       console.error('Error al cerrar la ventana:', e);
-      // Como último recurso, redirigir a about:blank
       window.location.href = 'about:blank';
     }
   };
 
-  // Si está cargando la autenticación, mostrar loading
   if (authLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -70,7 +71,6 @@ function App() {
     );
   }
 
-  // Si hay error de autenticación, mostrar error
   if (authError) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
@@ -99,7 +99,6 @@ function App() {
     );
   }
 
-  // Si no está autenticado, mostrar mensaje
   if (!isAuthenticated) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
@@ -128,128 +127,15 @@ function App() {
     );
   }
 
-  const transformToPackages = (data: ShippingData): Package[] => {
+  const transformToPackages = (data: any): Package[] => {
     if (!data.items_history || data.items_history.length === 0) {
       return [];
     }
-    return data.items_history.map((item, index) => ({
+    return data.items_history.map((item: any, index: number) => ({
       item_code: item.item_code,
       events: item.events,
       package_number: index + 1
     }));
-  };
-
-  const fetchShipment = async (tracking: string): Promise<ShippingData> => {
-    const response = await fetch(`${import.meta.env.VITE_API_URL}${import.meta.env.VITE_API_ENDPOINT}/${tracking}?view=OPERATIONS&showItems=true`, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': import.meta.env.VITE_JWT_TOKEN,
-        'client_secret': import.meta.env.VITE_CLIENT_SECRET,
-        'client_id': import.meta.env.VITE_CLIENT_ID
-      }
-    });
-
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-
-    const result = await response.json();
-
-    if (!result.item_history_info?.data) {
-      throw new Error('No se encontró historial para este envío');
-    }
-
-    const historyData = result.item_history_info.data;
-
-    if (!historyData.items_history) {
-      historyData.items_history = [];
-    }
-
-    return {
-      ...historyData,
-      redis_info: result.redis_info || {}
-    };
-  };
-
-  const handleSearch = async () => {
-    if (!trackingNumber.trim()) return;
-    
-    setBulkSearchError(null);
-
-    const trackingNumbers = trackingNumber
-      .split(/[\n,\t]+/)
-      .map(t => t.trim())
-      .filter(t => t.length > 0);
-
-    // Verificar el límite de 1000 envíos
-    if (trackingNumbers.length > 1000) {
-      setBulkSearchError(`Has excedido el límite de 1000 envíos para búsqueda masiva. Actualmente tienes ${trackingNumbers.length} envíos.`);
-      return;
-    }
-
-    if (trackingNumbers.length > 1) {
-      setBulkResults(trackingNumbers.map(t => ({
-        trackingNumber: t,
-        data: null,
-        loading: true
-      })));
-      setShipmentData(null);
-      setError('');
-
-      const searches = trackingNumbers.map(async (t) => {
-        try {
-          const data = await fetchShipment(t);
-          setBulkResults(prev => prev.map(r => 
-            r.trackingNumber === t 
-              ? { trackingNumber: t, data, loading: false }
-              : r
-          ));
-          return { trackingNumber: t, data, loading: false };
-        } catch (err) {
-          setBulkResults(prev => prev.map(r => 
-            r.trackingNumber === t 
-              ? { trackingNumber: t, data: null, error: err.message, loading: false }
-              : r
-          ));
-          return { trackingNumber: t, data: null, error: err.message, loading: false };
-        }
-      });
-
-      await Promise.all(searches);
-    } else {
-      setBulkResults([]);
-      setSelectedTracking(null);
-      setLoading(true);
-      setError('');
-      
-      try {
-        const data = await fetchShipment(trackingNumber);
-        setShipmentData(data);
-      } catch (err) {
-        console.error('Error:', err);
-        setError(err instanceof Error ? err.message : 'Error al buscar el envío');
-        setShipmentData(null);
-      } finally {
-        setLoading(false);
-      }
-    }
-  };
-
-  const handleKeyPress = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSearch();
-    }
-  };
-
-  const handleBulkSelect = (tracking: string) => {
-    setSelectedTracking(tracking);
-    const result = bulkResults.find(r => r.trackingNumber === tracking);
-    if (result?.data) {
-      setShipmentData(result.data);
-      setError('');
-    }
   };
 
   const handleCreateEvent = async (eventData: any) => {
@@ -260,11 +146,10 @@ function App() {
       }
     } catch (err) {
       console.error('Error creating event:', err);
-      setError('Error al crear el evento');
     }
   };
 
-  const handleCancelStatus = async (status: ShippingEvent, packageCode?: string, packageNumber?: number) => {
+  const handleCancelStatus = async (status: any, packageCode?: string, packageNumber?: number) => {
     setCancelEventData({ 
       event: status, 
       isOpen: true,
@@ -277,24 +162,20 @@ function App() {
     try {
       if (!shipmentData || !cancelEventData.event) return;
 
-      // Usamos el packageCode que viene directamente del evento de cancelación
       const itemCode = cancelEventData.packageCode || '';
       
       const result = await eventService.cancelStatus(
         itemCode,
         cancelEventData.event.event_date,
         reason,
-        cancelEventData.event.description // Usamos directamente la descripción del evento
+        cancelEventData.event.description
       );
 
       if (result.success) {
         await handleSearch();
-      } else {
-        setError(result.error || 'Error al anular el estado');
       }
     } catch (err) {
       console.error('Error cancelling status:', err);
-      setError('Error al anular el estado');
     }
   };
 
@@ -331,7 +212,7 @@ function App() {
         return (
           <TrackingTimeline
             events={shipmentData.shipping_history.events}
-            onCancelStatus={null} // Desactivamos la anulación a nivel de envío
+            showNotifications={true}
           />
         );
     }
@@ -341,51 +222,16 @@ function App() {
     <div className="min-h-screen bg-gray-50 flex flex-col">
       <Header />
       <main className="flex-1 container mx-auto px-4 py-4 flex flex-col max-h-[calc(100vh-4rem)]">
-        <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100 mb-4">
-          <div className="flex gap-4">
-            <div className="flex-1">
-              <textarea
-                value={trackingNumber}
-                onChange={(e) => setTrackingNumber(e.target.value)}
-                onKeyDown={handleKeyPress}
-                placeholder="Introduce uno o varios números de seguimiento (separados por comas, tabulaciones o saltos de línea)"
-                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 min-h-[80px]"
-                disabled={loading}
-              />
-              <p className="mt-1 text-sm text-gray-500">
-                <Upload className="w-4 h-4 inline-block mr-1" />
-                Puedes pegar múltiples envíos desde Excel (usa Shift + Enter para añadir saltos de línea)
-              </p>
-              {bulkSearchError && (
-                <div className="mt-2 flex items-center gap-2 text-amber-600 bg-amber-50 p-2 rounded-md">
-                  <AlertCircle className="w-4 h-4 flex-shrink-0" />
-                  <p className="text-sm">{bulkSearchError}</p>
-                </div>
-              )}
-            </div>
-            <button
-              onClick={handleSearch}
-              disabled={loading || !trackingNumber.trim() || bulkSearchError !== null}
-              className="px-6 py-2 bg-red-900 text-white rounded-lg hover:bg-red-800 focus:outline-none focus:ring-2 focus:ring-red-500 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 h-fit"
-            >
-              {loading ? (
-                <>
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                  <span>Buscando...</span>
-                </>
-              ) : (
-                <>
-                  <Search className="w-5 h-5" />
-                  <span>Buscar</span>
-                </>
-              )}
-            </button>
-          </div>
-          
-          {error && (
-            <p className="text-red-600 mt-4">{error}</p>
-          )}
-        </div>
+        <SearchBar
+          value={trackingNumber}
+          onChange={setTrackingNumber}
+          onKeyDown={handleKeyPress}
+          onSearch={handleSearch}
+          isExpanded={isExpanded}
+          setIsExpanded={setIsExpanded}
+          loading={loading}
+          error={bulkSearchError}
+        />
 
         <div className="flex-1 flex gap-4 min-h-0">
           {bulkResults.length > 0 && (
@@ -404,6 +250,7 @@ function App() {
                 <ShipmentDetails 
                   data={shipmentData}
                   onCreateEvent={() => setIsCreateEventModalOpen(true)}
+                  onRefresh={handleSearch}
                 />
                 
                 <ViewModeSelector
@@ -436,6 +283,15 @@ function App() {
               eventDate={cancelEventData.event?.event_date || ''}
               packageCode={cancelEventData.packageCode}
               packageNumber={cancelEventData.packageNumber}
+            />
+
+            <QuickDeliveryModal
+              isOpen={isDeliveryModalOpen}
+              onClose={() => setIsDeliveryModalOpen(false)}
+              onDeliver={handleSearch}
+              shippingCode={shipmentData.shipping_code}
+              isPudoAllowed={deliveryService.isPudoDeliveryAllowed(shipmentData)}
+              pudoInfo={shipmentData.additionals?.find(a => a.additionalCode === 'PER')}
             />
           </>
         )}

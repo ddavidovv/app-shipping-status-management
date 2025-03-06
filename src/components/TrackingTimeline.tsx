@@ -1,12 +1,10 @@
 import { ShippingEvent } from '../types';
-import { Mail, Package, Truck, CheckCircle2, ChevronDown, ChevronRight, XCircle } from 'lucide-react';
+import { Mail, Package, Truck, CheckCircle2, ChevronDown, ChevronRight } from 'lucide-react';
 import { useState } from 'react';
-import { isStatusCancellable, EVENT_TYPE_ICONS, EVENT_TYPE_DESCRIPTIONS, EVENT_TYPE_COLORS } from '../config/eventConfig';
-import { eventService } from '../services/eventService';
+import { EVENT_TYPE_ICONS, EVENT_TYPE_DESCRIPTIONS, EVENT_TYPE_COLORS } from '../config/eventConfig';
 
 interface Props {
   events: ShippingEvent[];
-  onCancelStatus?: (status: ShippingEvent) => void;
   showNotifications?: boolean;
 }
 
@@ -38,11 +36,9 @@ const formatDateKey = (date: Date): string => {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 };
 
-export default function TrackingTimeline({ events, onCancelStatus, showNotifications = true }: Props) {
+export default function TrackingTimeline({ events, showNotifications = true }: Props) {
   const [expandedStates, setExpandedStates] = useState<Record<string, boolean>>({});
   const [showNotificationsPanel, setShowNotificationsPanel] = useState(true);
-  const [showCurlFor, setShowCurlFor] = useState<string | null>(null);
-  const [copiedStatus, setCopiedStatus] = useState<Record<string, boolean>>({});
 
   const toggleState = (statusDate: string) => {
     setExpandedStates(prev => ({
@@ -119,7 +115,6 @@ export default function TrackingTimeline({ events, onCancelStatus, showNotificat
       {/* Estados y sus eventos */}
       {groupedEvents.map(({ status, events: packageEvents, dayKey }) => {
         const isLatest = isLatestStatus(status);
-        const isCancellable = isLatest && isStatusCancellable(status.code);
         
         return (
           <div key={status.event_date} className="space-y-1">
@@ -143,20 +138,6 @@ export default function TrackingTimeline({ events, onCancelStatus, showNotificat
                   <span className="text-xs text-gray-400">
                     ({status.code})
                   </span>
-                  {onCancelStatus && isCancellable && (
-                    <div className="flex items-center gap-1">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onCancelStatus(status);
-                        }}
-                        className="p-0.5 text-gray-400 hover:text-red-500 transition-colors"
-                        title="Anular estado"
-                      >
-                        <XCircle className="w-4 h-4" />
-                      </button>
-                    </div>
-                  )}
                   {isLatest && (
                     <span className="text-xs text-green-600 bg-green-50 px-2 py-0.5 rounded-full">
                       Último estado

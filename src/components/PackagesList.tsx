@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { Package } from '../types';
-import { Box, ChevronDown, ChevronRight } from 'lucide-react';
+import { Box, ChevronDown, ChevronRight, XCircle } from 'lucide-react';
 import TrackingTimeline from './TrackingTimeline';
+import { isStatusCancellable } from '../config/eventConfig';
 
 interface Props {
   packages: Package[];
@@ -28,6 +29,8 @@ export default function PackagesList({ packages, onCancelStatus }: Props) {
     <div className="space-y-4">
       {packages.map((pkg) => {
         const lastStatus = getLastStatus(pkg.events);
+        const isCancellable = lastStatus && isStatusCancellable(lastStatus.code);
+        
         return (
           <div key={pkg.item_code} className="bg-white rounded-lg shadow-sm border border-gray-200">
             <div
@@ -42,9 +45,23 @@ export default function PackagesList({ packages, onCancelStatus }: Props) {
                       Bulto {pkg.package_number}
                     </h3>
                     {lastStatus && (
-                      <span className="text-sm px-2 py-0.5 bg-gray-100 rounded-full">
-                        {lastStatus.description}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm px-2 py-0.5 bg-gray-100 rounded-full">
+                          {lastStatus.description}
+                        </span>
+                        {onCancelStatus && isCancellable && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onCancelStatus(lastStatus, pkg.item_code, pkg.package_number);
+                            }}
+                            className="p-0.5 text-gray-400 hover:text-red-500 transition-colors"
+                            title="Anular estado"
+                          >
+                            <XCircle className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
                     )}
                   </div>
                   <p className="text-sm text-gray-600">
@@ -63,10 +80,7 @@ export default function PackagesList({ packages, onCancelStatus }: Props) {
               <div className="p-4 border-t border-gray-100">
                 <TrackingTimeline
                   events={pkg.events}
-                  onCancelStatus={onCancelStatus ? 
-                    (status) => onCancelStatus(status, pkg.item_code, pkg.package_number) : 
-                    undefined
-                  }
+                  showNotifications={false}
                 />
               </div>
             )}

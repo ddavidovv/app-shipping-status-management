@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { Package } from '../types';
 import TrackingTimeline from './TrackingTimeline';
-import { Box } from 'lucide-react';
+import { Box, XCircle } from 'lucide-react';
+import { isStatusCancellable } from '../config/eventConfig';
 
 interface Props {
   packages: Package[];
@@ -32,6 +33,12 @@ export default function PackagesComparison({ packages, onCancelStatus }: Props) 
     selectedPackages.includes(pkg.item_code)
   );
 
+  const getLastStatus = (events: Package['events']) => {
+    return events
+      .filter(event => event.type === 'STATUS')
+      .sort((a, b) => new Date(b.event_date).getTime() - new Date(a.event_date).getTime())[0];
+  };
+
   return (
     <div className="space-y-6">
       <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
@@ -39,19 +46,36 @@ export default function PackagesComparison({ packages, onCancelStatus }: Props) 
           Selecciona hasta 2 bultos para comparar
         </h3>
         <div className="flex flex-wrap gap-2">
-          {packages.map((pkg) => (
-            <button
-              key={pkg.item_code}
-              onClick={() => togglePackageSelection(pkg.item_code)}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg border transition-colors text-sm
-                ${selectedPackages.includes(pkg.item_code)
-                  ? 'bg-corporate-primary text-white border-corporate-primary'
-                  : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'}`}
-            >
-              <Box className="w-4 h-4" />
-              <span>Bulto {pkg.package_number}</span>
-            </button>
-          ))}
+          {packages.map((pkg) => {
+            const lastStatus = getLastStatus(pkg.events);
+            const isCancellable = lastStatus && isStatusCancellable(lastStatus.code);
+            
+            return (
+              <button
+                key={pkg.item_code}
+                onClick={() => togglePackageSelection(pkg.item_code)}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg border transition-colors text-sm
+                  ${selectedPackages.includes(pkg.item_code)
+                    ? 'bg-corporate-primary text-white border-corporate-primary'
+                    : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'}`}
+              >
+                <Box className="w-4 h-4" />
+                <span>Bulto {pkg.package_number}</span>
+                {onCancelStatus && isCancellable && lastStatus && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onCancelStatus(lastStatus, pkg.item_code, pkg.package_number);
+                    }}
+                    className="p-0.5 text-gray-400 hover:text-red-500 transition-colors"
+                    title="Anular estado"
+                  >
+                    <XCircle className="w-4 h-4" />
+                  </button>
+                )}
+              </button>
+            );
+          })}
         </div>
       </div>
 
@@ -72,10 +96,6 @@ export default function PackagesComparison({ packages, onCancelStatus }: Props) 
               </div>
               <TrackingTimeline
                 events={pkg.events}
-                onCancelStatus={onCancelStatus ? 
-                  (status) => onCancelStatus(status, pkg.item_code, pkg.package_number) : 
-                  undefined
-                }
                 showNotifications={false}
               />
             </div>

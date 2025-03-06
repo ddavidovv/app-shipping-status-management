@@ -1,3 +1,5 @@
+import { DivideIcon as LucideIcon } from 'lucide-react';
+
 export type EventType = 
   | 'EVENT'
   | 'SHIPPING_ITEM_EVENT_V1'
@@ -9,6 +11,7 @@ export type StatusCode =
   | '1600' // Reparto fallido
   | '1200' // Delegación destino
   | '0900' // En tránsito
+  | '2100' // Entregado
   | string; // Otros códigos de estado
 
 export type EventTypeCode = 
@@ -29,6 +32,12 @@ export interface ShippingEvent {
     signee_name?: string | null;
     event_text?: string;
     status_name?: string; // Nombre del estado (ej: "DELIVERY")
+    additionals?: Array<{
+      additionalCode: string;
+      additionalSubCode?: string;
+      additionalFlag?: boolean;
+      additionalValue?: number;
+    }>;
     [key: string]: any;
   } | null;
 }
@@ -48,6 +57,56 @@ export interface RedisInfo {
   param_id_1: string;
   status_code: string;
   [key: string]: any;
+}
+
+export interface Additional {
+  additionalShippingCode: string | null;
+  additionalCode: string;
+  additionalSubCode?: string;
+  additionalFlag?: boolean;
+  additionalValue?: number;
+  pointName?: string | null;
+  providerCode?: string;
+  organicPointCode?: string;
+}
+
+export interface PudoPoint {
+  provider_code: string;
+  point_code: string;
+  point_name: string;
+  phone_number: string;
+  is_active: string;
+  organic_point_code: string;
+  is_ctt_active_pick_up: boolean;
+  is_ctt_active_drop_off: boolean;
+  is_ctt_active_pick_up_commercial: boolean;
+  is_ctt_active_drop_off_commercial: boolean;
+  is_ctt_active_pick_up_quality: boolean;
+  is_ctt_active_drop_off_quality: boolean;
+  is_ctt_active_pick_up_operations: boolean;
+  is_ctt_active_drop_off_operations: boolean;
+  is_ctt_active_pick_up_discretionary: boolean;
+  is_ctt_active_drop_off_discretionary: boolean;
+  address: {
+    address: string;
+    address2: string;
+    postal_code: string;
+    country_code: string;
+    gps_location: {
+      latitude: number;
+      longitude: number;
+    };
+  };
+  openning_hours: Array<{
+    day_of_week: number;
+    hours: Array<{
+      from: string;
+      to: string;
+    }>;
+  }>;
+  is_active_dates: null | string[];
+  is_inactive_dates: null | string[];
+  history: any[];
 }
 
 export interface ShippingData {
@@ -71,6 +130,9 @@ export interface ShippingData {
   declared_weight?: number;
   final_weight?: number;
   redis_info?: RedisInfo;
+  additionals?: Additional[];
+  shipping_type_code?: string;
+  client_center_code?: string;
   
   // Campos adicionales de dirección
   origin_country_code: string;
