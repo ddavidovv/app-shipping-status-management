@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { X, Loader2, Package, MapPin, Code, Copy, Check, Clock } from 'lucide-react';
+import { X, Loader2, Package, MapPin, Code, Copy, Check, Clock, AlertCircle, Info, Box } from 'lucide-react';
 import { deliveryService } from '../services/deliveryService';
+import { StatusCode, ShippingData } from '../types';
 
 interface Props {
   isOpen: boolean;
@@ -12,6 +13,8 @@ interface Props {
     providerCode: string;
     organicPointCode: string;
   } | null;
+  currentStatus: StatusCode;
+  shipmentData: ShippingData;
 }
 
 interface QuickTimeOption {
@@ -24,7 +27,15 @@ const QUICK_TIME_OPTIONS: QuickTimeOption[] = [
   { label: 'Hace 30 min', value: 30 },
   { label: 'Hace 1 hora', value: 60 },
   { label: 'Hace 2 horas', value: 120 },
+  { label: 'Hace 4 horas', value: 240 },
 ];
+
+const ALLOWED_STATUS_CODES = {
+  '1500': 'En reparto',
+  '1600': 'Reparto fallido',
+  '1200': 'Delegación destino',
+  '0900': 'En tránsito'
+} as const;
 
 export default function QuickDeliveryModal({
   isOpen,
@@ -32,7 +43,9 @@ export default function QuickDeliveryModal({
   onDeliver,
   shippingCode,
   isPudoAllowed,
-  pudoInfo
+  pudoInfo,
+  currentStatus,
+  shipmentData
 }: Props) {
   const [deliveryType, setDeliveryType] = useState<'regular' | 'pudo'>(isPudoAllowed ? 'pudo' : 'regular');
   const [signeeName, setSigneeName] = useState('');
@@ -42,6 +55,28 @@ export default function QuickDeliveryModal({
   const [error, setError] = useState<string | null>(null);
   const [showCurl, setShowCurl] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [showStatusTooltip, setShowStatusTooltip] = useState(false);
+
+  // Check if any package is in a valid state for delivery
+  const hasDeliverablePackage = shipmentData.items_history.some(item => {
+    const lastStatus = item.events
+      .filter(event => event.type === 'STATUS')
+      .sort((a, b) => new Date(b.event_date).getTime() - new Date(a.event_date).getTime())[0];
+    return lastStatus && lastStatus.code in ALLOWED_STATUS_CODES;
+  });
+
+  // Get last status for each package
+  const packageStatuses = shipmentData.items_history.map(item => {
+    const lastStatus = item.events
+      .filter(event => event.type === 'STATUS')
+      .sort((a, b) => new Date(b.event_date).getTime() - new Date(a.event_date).getTime())[0];
+    return {
+      itemCode: item.item_code,
+      status: lastStatus?.description || 'Sin estado',
+      statusCode: lastStatus?.code || '',
+      allowsDelivery: lastStatus?.code in ALLOWED_STATUS_CODES
+    };
+  });
 
   if (!isOpen) return null;
 
@@ -59,11 +94,14 @@ export default function QuickDeliveryModal({
         image_id: ''
       };
 
+      // Convert local datetime to UTC ISO string
+      const utcDate = new Date(deliveryDateTime).toISOString();
+
       const result = await deliveryService.deliverShipment(
         shippingCode,
         deliveryType === 'pudo',
         signeeInfo,
-        new Date(deliveryDateTime).toISOString()
+        utcDate
       );
 
       if (result.success) {
@@ -85,13 +123,15 @@ export default function QuickDeliveryModal({
       identifier: deliveryType === 'regular' ? signeeId.trim() : '',
       image_id: ''
     };
-    const datetime = deliveryDateTime || new Date().toISOString();
+    
+    // Ensure UTC ISO string for curl command
+    const utcDate = deliveryDateTime ? new Date(deliveryDateTime).toISOString() : new Date().toISOString();
     
     return deliveryService.generateCurlCommand(
       shippingCode,
       deliveryType === 'pudo',
       signeeInfo,
-      datetime
+      utcDate
     );
   };
 
@@ -107,14 +147,25 @@ export default function QuickDeliveryModal({
   const handleQuickTimeSelect = (minutes: number) => {
     const date = new Date();
     date.setMinutes(date.getMinutes() - minutes);
-    setDeliveryDateTime(date.toISOString().slice(0, 16)); // Format: "YYYY-MM-DDThh:mm"
+    
+    // Format the date in local time with seconds precision
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const hours = String(date.getHours()).padStart(2, '0');
+    const mins = String(date.getMinutes()).padStart(2, '0');
+    const secs = String(date.getSeconds()).padStart(2, '0');
+    
+    // Format as YYYY-MM-DDThh:mm:ss
+    const formattedDate = `${year}-${month}-${day}T${hours}:${mins}:${secs}`;
+    setDeliveryDateTime(formattedDate);
   };
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-white rounded-lg p-6 w-full max-w-md">
         <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-semibold text-gray-900">Entrega Rápida</h2>
+          <h2 className="text-xl font-semibold text-gray-900">Entrega manual</h2>
           <button
             onClick={onClose}
             className="text-gray-500 hover:text-gray-700"
@@ -122,6 +173,58 @@ export default function QuickDeliveryModal({
           >
             <X className="w-5 h-5" />
           </button>
+        </div>
+
+        {/* Información de bultos */}
+        <div className="mb-4 space-y-2">
+          {/* Resumen de estados de bultos */}
+          {packageStatuses.length > 0 && (
+            <div className="p-3 rounded-lg bg-gray-50 text-sm space-y-2">
+              <div className="flex items-center gap-2 text-gray-700 mb-1">
+                <Box className="w-4 h-4 flex-shrink-0" />
+                <span className="font-medium">Estado de los bultos</span>
+                <div className="relative">
+                  <button
+                    onMouseEnter={() => setShowStatusTooltip(true)}
+                    onMouseLeave={() => setShowStatusTooltip(false)}
+                    className="p-1 text-gray-400 hover:text-gray-600 rounded-full"
+                  >
+                    <Info className="w-4 h-4" />
+                  </button>
+                  {showStatusTooltip && (
+                    <div className="absolute left-1/2 bottom-full mb-2 -translate-x-1/2 w-48 p-2 bg-gray-800 text-white text-xs rounded shadow-lg z-50">
+                      <p className="font-medium mb-1">Estados que permiten entrega:</p>
+                      <ul className="space-y-0.5">
+                        {Object.entries(ALLOWED_STATUS_CODES).map(([code, name]) => (
+                          <li key={code}>{name} ({code})</li>
+                        ))}
+                      </ul>
+                      <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 translate-y-1/2 rotate-45 w-2 h-2 bg-gray-800"></div>
+                    </div>
+                  )}
+                </div>
+              </div>
+              <div className="space-y-1">
+                {packageStatuses.map((pkg, index) => (
+                  <div key={pkg.itemCode} className="flex items-center gap-2">
+                    <span className={`font-medium ${pkg.allowsDelivery ? 'text-green-600' : 'text-gray-600'}`}>
+                      Bulto {index + 1}:
+                    </span>
+                    <span className={pkg.allowsDelivery ? 'text-green-600' : 'text-gray-600'}>
+                      {pkg.status}
+                    </span>
+                    <span className="text-xs text-gray-400">({pkg.statusCode})</span>
+                    {pkg.allowsDelivery && (
+                      <span className="ml-auto flex-shrink-0 px-1.5 py-0.5 bg-green-100 text-green-700 text-xs rounded-full flex items-center gap-1">
+                        <Check className="w-3 h-3" />
+                        Entregable
+                      </span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -175,7 +278,7 @@ export default function QuickDeliveryModal({
             <>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Nombre del receptor
+                  Nombre del receptor <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
@@ -206,7 +309,7 @@ export default function QuickDeliveryModal({
 
           <div className="space-y-2">
             <label className="block text-sm font-medium text-gray-700">
-              Fecha y hora de entrega
+              Fecha y hora de entrega <span className="text-red-500">*</span>
             </label>
             
             <div className="flex flex-wrap gap-2 mb-2">
@@ -230,12 +333,20 @@ export default function QuickDeliveryModal({
               className="w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-red-500"
               required
               disabled={isSubmitting}
+              step="1"
             />
           </div>
 
           {error && (
             <div className="p-3 rounded-md bg-red-50 text-red-800 text-sm">
               {error}
+            </div>
+          )}
+
+          {!hasDeliverablePackage && (
+            <div className="p-3 rounded-md bg-amber-50 text-amber-800 text-sm flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 flex-shrink-0" />
+              <span>Ningún bulto tiene un estado que permita la entrega</span>
             </div>
           )}
 
@@ -278,7 +389,12 @@ export default function QuickDeliveryModal({
             </button>
             <button
               type="submit"
-              disabled={isSubmitting || (!signeeName.trim() && deliveryType === 'regular') || !deliveryDateTime}
+              disabled={
+                isSubmitting || 
+                (!signeeName.trim() && deliveryType === 'regular') || 
+                !deliveryDateTime || 
+                !hasDeliverablePackage
+              }
               className="px-4 py-2 text-sm font-medium text-white bg-red-900 rounded-md hover:bg-red-800 disabled:opacity-50 flex items-center gap-2"
             >
               {isSubmitting ? (

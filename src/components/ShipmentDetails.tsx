@@ -1,41 +1,22 @@
 import React, { useState } from 'react';
-import { MapPin, User, Package, ChevronDown, ChevronRight, Plus, AlertCircle, Tag, Printer, RefreshCw, CheckCircle2, Home, Box, Building, Info } from 'lucide-react';
+import { MapPin, User, Package, ChevronDown, ChevronRight, RefreshCw, CheckCircle2, Home, Box, Building } from 'lucide-react';
 import { ShippingData } from '../types';
-import { labelService } from '../services/labelService';
-import { eventService } from '../services/eventService';
 import { deliveryService } from '../services/deliveryService';
 import QuickDeliveryModal from './QuickDeliveryModal';
 import PudoInfoModal from './PudoInfoModal';
 
 interface Props {
   data: ShippingData;
-  onCreateEvent: () => void;
   onRefresh: () => void;
 }
 
-export default function ShipmentDetails({ data, onCreateEvent, onRefresh }: Props) {
+export default function ShipmentDetails({ data, onRefresh }: Props) {
   const [isExpanded, setIsExpanded] = useState(true);
-  const [isPrinting, setPrinting] = useState(false);
-  const [isResetting, setIsResetting] = useState(false);
   const [isQuickDeliveryOpen, setIsQuickDeliveryOpen] = useState(false);
   const [isPudoInfoOpen, setIsPudoInfoOpen] = useState(false);
 
   const isDelivered = deliveryService.isDelivered(data);
   const isPudoAllowed = deliveryService.isPudoDeliveryAllowed(data);
-
-  const handlePrintLabel = async () => {
-    setPrinting(true);
-    try {
-      const result = await labelService.printLabel(data.shipping_code);
-      if (!result.success) {
-        console.error('Error printing label:', result.error);
-      }
-    } catch (error) {
-      console.error('Error:', error);
-    } finally {
-      setPrinting(false);
-    }
-  };
 
   const formatAddress = (address: string, address2: string, postalCode: string, town: string, countryCode: string) => {
     return `${address}, ${postalCode} ${town} (${countryCode})${address2 ? ` - ${address2}` : ''}`;
@@ -87,17 +68,6 @@ export default function ShipmentDetails({ data, onCreateEvent, onRefresh }: Prop
             <RefreshCw className="w-3 h-3" />
             Actualizar
           </button>
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              handlePrintLabel();
-            }}
-            disabled={isPrinting}
-            className="flex items-center gap-1 px-2 py-1 text-sm bg-gray-100 text-gray-700 rounded hover:bg-gray-200 disabled:opacity-50"
-          >
-            <Printer className="w-3 h-3" />
-            {isPrinting ? 'Imprimiendo...' : 'Imprimir Etiqueta'}
-          </button>
           {!isDelivered && (
             <button
               onClick={(e) => {
@@ -110,16 +80,6 @@ export default function ShipmentDetails({ data, onCreateEvent, onRefresh }: Prop
               Entregar
             </button>
           )}
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onCreateEvent();
-            }}
-            className="flex items-center gap-1 px-2 py-1 text-sm bg-red-900 text-white rounded hover:bg-red-800"
-          >
-            <Plus className="w-3 h-3" />
-            Crear Evento
-          </button>
           {isExpanded ? (
             <ChevronDown className="w-4 h-4 text-gray-400" />
           ) : (
@@ -184,7 +144,7 @@ export default function ShipmentDetails({ data, onCreateEvent, onRefresh }: Prop
                           className="p-1 text-blue-700 hover:text-blue-900 rounded-full hover:bg-blue-50"
                           title="Ver información del punto PUDO"
                         >
-                          <Info className="w-4 h-4" />
+                          <Box className="w-4 h-4" />
                         </button>
                       </>
                     )}
@@ -206,6 +166,8 @@ export default function ShipmentDetails({ data, onCreateEvent, onRefresh }: Prop
           providerCode: pudoInfo.providerCode || '',
           organicPointCode: pudoInfo.organicPointCode || ''
         } : null}
+        currentStatus={data.shipping_status_code}
+        shipmentData={data}
       />
 
       {pudoInfo?.organicPointCode && (

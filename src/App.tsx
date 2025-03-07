@@ -249,7 +249,6 @@ function App() {
               <div className="space-y-4">
                 <ShipmentDetails 
                   data={shipmentData}
-                  onCreateEvent={() => setIsCreateEventModalOpen(true)}
                   onRefresh={handleSearch}
                 />
                 
@@ -292,6 +291,8 @@ function App() {
               shippingCode={shipmentData.shipping_code}
               isPudoAllowed={deliveryService.isPudoDeliveryAllowed(shipmentData)}
               pudoInfo={shipmentData.additionals?.find(a => a.additionalCode === 'PER')}
+              currentStatus={shipmentData.shipping_status_code}
+              shipmentData={shipmentData}
             />
           </>
         )}

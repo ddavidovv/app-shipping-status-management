@@ -11,6 +11,14 @@ interface DeliveryResponse {
   error?: string;
 }
 
+// Estados que permiten realizar una entrega
+const DELIVERABLE_STATUS_CODES = [
+  '1500', // En reparto
+  '1600', // Reparto fallido
+  '1200', // Delegación destino
+  '0900', // En tránsito
+];
+
 export const deliveryService = {
   async deliverShipment(
     shippingCode: string,
@@ -19,8 +27,15 @@ export const deliveryService = {
     actionDateTime: string = new Date().toISOString()
   ): Promise<DeliveryResponse> {
     try {
+      console.log('Enviando petición de entrega:', {
+        shippingCode,
+        isPudo,
+        signee,
+        actionDateTime
+      });
+
       const payload = {
-        routeCode: "280C0000", // TODO: Get from shipping history
+        routeCode: "280C0000",
         shippingCode,
         action: "DELIVER",
         signee: {
@@ -68,7 +83,7 @@ export const deliveryService = {
     actionDateTime: string
   ): string {
     const payload = {
-      routeCode: "280C0000", // TODO: Get from shipping history
+      routeCode: "280C0000",
       shippingCode,
       action: "DELIVER",
       signee: {
@@ -99,12 +114,13 @@ export const deliveryService = {
     return data.shipping_status_code === '2100';
   },
 
-  getRouteCodeFromHistory(data: ShippingData): string | null {
-    // Buscar el último evento de entrega que tenga route_code
-    const deliveryEvent = data.shipping_history.events
-      .filter(event => event.detail?.route_code)
-      .sort((a, b) => new Date(b.event_date).getTime() - new Date(a.event_date).getTime())[0];
+  isDeliveryAllowed(data: { shipping_status_code: string }): boolean {
+    // Si el envío está entregado, no permitir entrega
+    if (data.shipping_status_code === '2100') {
+      return false;
+    }
 
-    return deliveryEvent?.detail?.route_code || null;
+    // Permitir entrega para los estados definidos
+    return DELIVERABLE_STATUS_CODES.includes(data.shipping_status_code);
   }
 };

@@ -178,6 +178,11 @@ export default function TrackingTimeline({ events, showNotifications = true }: P
                           <span className="text-sm text-gray-900 truncate">
                             {event.description}
                           </span>
+                          {event.code === 'SORTER_READ_EVENT' && event.detail && (
+                            <span className="text-xs text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">
+                              {event.detail.hub_code} · {event.detail.sorter_code}
+                            </span>
+                          )}
                         </div>
                         {event.detail?.event_text && (
                           <span className="text-sm text-gray-600 block truncate">
