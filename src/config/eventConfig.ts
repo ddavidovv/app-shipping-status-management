@@ -7,6 +7,7 @@ export const CANCELLABLE_STATUS_CODES: StatusCode[] = [
   '2300', // Depositado en PUDO
   '1500', // En reparto
   '1600', // Reparto Fallido
+  '3000', // Anulado
 ];
 
 // Función helper para verificar si un estado es anulable

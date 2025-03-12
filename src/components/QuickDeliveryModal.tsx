@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, Loader2, Package, MapPin, Code, Copy, Check, Clock, AlertCircle, Info, Box } from 'lucide-react';
 import { deliveryService } from '../services/deliveryService';
 import { StatusCode, ShippingData } from '../types';
@@ -51,11 +51,25 @@ export default function QuickDeliveryModal({
   const [signeeName, setSigneeName] = useState('');
   const [signeeId, setSigneeId] = useState('');
   const [deliveryDateTime, setDeliveryDateTime] = useState('');
+  const [routeCode, setRouteCode] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showCurl, setShowCurl] = useState(false);
   const [copied, setCopied] = useState(false);
   const [showStatusTooltip, setShowStatusTooltip] = useState(false);
+
+  // Obtener el routeCode del último estado "En reparto"
+  useEffect(() => {
+    if (isOpen && shipmentData) {
+      const lastDeliveryStatus = shipmentData.shipping_history.events
+        .filter(event => event.type === 'STATUS' && event.code === '1500')
+        .sort((a, b) => new Date(b.event_date).getTime() - new Date(a.event_date).getTime())[0];
+
+      if (lastDeliveryStatus?.detail?.event_courier_code) {
+        setRouteCode(lastDeliveryStatus.detail.event_courier_code);
+      }
+    }
+  }, [isOpen, shipmentData]);
 
   // Check if any package is in a valid state for delivery
   const hasDeliverablePackage = shipmentData.items_history.some(item => {
@@ -82,7 +96,7 @@ export default function QuickDeliveryModal({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if ((!signeeName.trim() && deliveryType === 'regular') || !deliveryDateTime || isSubmitting) return;
+    if ((!signeeName.trim() && deliveryType === 'regular') || !deliveryDateTime || !routeCode.trim() || isSubmitting) return;
 
     setIsSubmitting(true);
     setError(null);
@@ -101,7 +115,8 @@ export default function QuickDeliveryModal({
         shippingCode,
         deliveryType === 'pudo',
         signeeInfo,
-        utcDate
+        utcDate,
+        routeCode.trim()
       );
 
       if (result.success) {
@@ -131,7 +146,8 @@ export default function QuickDeliveryModal({
       shippingCode,
       deliveryType === 'pudo',
       signeeInfo,
-      utcDate
+      utcDate,
+      routeCode.trim()
     );
   };
 
@@ -307,6 +323,21 @@ export default function QuickDeliveryModal({
             </>
           )}
 
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Código de ruta <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="text"
+              value={routeCode}
+              onChange={(e) => setRouteCode(e.target.value)}
+              className="w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-red-500"
+              placeholder="Código de ruta del repartidor"
+              required
+              disabled={isSubmitting}
+            />
+          </div>
+
           <div className="space-y-2">
             <label className="block text-sm font-medium text-gray-700">
               Fecha y hora de entrega <span className="text-red-500">*</span>
@@ -392,7 +423,8 @@ export default function QuickDeliveryModal({
               disabled={
                 isSubmitting || 
                 (!signeeName.trim() && deliveryType === 'regular') || 
-                !deliveryDateTime || 
+                !deliveryDateTime ||
+                !routeCode.trim() ||
                 !hasDeliverablePackage
               }
               className="px-4 py-2 text-sm font-medium text-white bg-red-900 rounded-md hover:bg-red-800 disabled:opacity-50 flex items-center gap-2"

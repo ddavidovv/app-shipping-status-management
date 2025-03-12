@@ -34,6 +34,12 @@ export function useShipmentSearch(): UseShipmentSearchResult {
   const [bulkSearchError, setBulkSearchError] = useState<string | null>(null);
   const [isExpanded, setIsExpanded] = useState(false);
 
+  const validateTrafficType = (data: ShippingData): void => {
+    if (data.traffic_type_code !== 'TRANSIT_TRF') {
+      throw new Error('Este número corresponde a una recogida. La búsqueda solo debe realizarse para envíos.');
+    }
+  };
+
   const fetchShipment = async (tracking: string): Promise<ShippingData> => {
     const response = await fetch(`${import.meta.env.VITE_API_URL}/enterprise-portal/shipping-status-mgmt/trf/item-history/v1/history/${tracking}?view=OPERATIONS&showItems=true`, {
       method: 'GET',
@@ -55,6 +61,9 @@ export function useShipmentSearch(): UseShipmentSearchResult {
     if (!result.data) {
       throw new Error('No se encontró historial para este envío');
     }
+
+    // Validar el tipo de tráfico
+    validateTrafficType(result.data);
 
     return result.data;
   };

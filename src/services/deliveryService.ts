@@ -24,18 +24,20 @@ export const deliveryService = {
     shippingCode: string,
     isPudo: boolean,
     signee: SigneeInfo,
-    actionDateTime: string = new Date().toISOString()
+    actionDateTime: string = new Date().toISOString(),
+    routeCode: string
   ): Promise<DeliveryResponse> {
     try {
       console.log('Enviando petición de entrega:', {
         shippingCode,
         isPudo,
         signee,
-        actionDateTime
+        actionDateTime,
+        routeCode
       });
 
       const payload = {
-        routeCode: "280C0000",
+        routeCode,
         shippingCode,
         action: "DELIVER",
         signee: {
@@ -80,10 +82,11 @@ export const deliveryService = {
     shippingCode: string,
     isPudo: boolean,
     signee: SigneeInfo,
-    actionDateTime: string
+    actionDateTime: string,
+    routeCode: string
   ): string {
     const payload = {
-      routeCode: "280C0000",
+      routeCode,
       shippingCode,
       action: "DELIVER",
       signee: {
@@ -114,13 +117,7 @@ export const deliveryService = {
     return data.shipping_status_code === '2100';
   },
 
-  isDeliveryAllowed(data: { shipping_status_code: string }): boolean {
-    // Si el envío está entregado, no permitir entrega
-    if (data.shipping_status_code === '2100') {
-      return false;
-    }
-
-    // Permitir entrega para los estados definidos
+  isDeliveryAllowed(data: ShippingData): boolean {
     return DELIVERABLE_STATUS_CODES.includes(data.shipping_status_code);
   }
 };

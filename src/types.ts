@@ -133,6 +133,7 @@ export interface ShippingData {
   additionals?: Additional[];
   shipping_type_code?: string;
   client_center_code?: string;
+  traffic_type_code?: string;
   
   // Campos adicionales de dirección
   origin_country_code: string;
