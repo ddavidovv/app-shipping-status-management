@@ -35,7 +35,8 @@ export function useShipmentSearch(): UseShipmentSearchResult {
   const [isExpanded, setIsExpanded] = useState(false);
 
   const validateTrafficType = (data: ShippingData): void => {
-    if (data.traffic_type_code !== 'TRANSIT_TRF') {
+    const validTypes = ['TRANSIT_TRF', 'TRANSIT_TRFT'];
+    if (!validTypes.includes(data.traffic_type_code || '')) {
       throw new Error('Este número corresponde a una recogida. La búsqueda solo debe realizarse para envíos.');
     }
   };
@@ -72,6 +73,7 @@ export function useShipmentSearch(): UseShipmentSearchResult {
     if (!trackingNumber.trim()) return;
     
     setBulkSearchError(null);
+    setError('');
 
     const trackingNumbers = trackingNumber
       .split(/[\n,\t]+/)
@@ -90,7 +92,6 @@ export function useShipmentSearch(): UseShipmentSearchResult {
         loading: true
       })));
       setShipmentData(null);
-      setError('');
 
       const searches = trackingNumbers.map(async (t) => {
         try {
@@ -102,12 +103,13 @@ export function useShipmentSearch(): UseShipmentSearchResult {
           ));
           return { trackingNumber: t, data, loading: false };
         } catch (err) {
+          const errorMessage = err instanceof Error ? err.message : 'Error al buscar el envío';
           setBulkResults(prev => prev.map(r => 
             r.trackingNumber === t 
-              ? { trackingNumber: t, data: null, error: err.message, loading: false }
+              ? { trackingNumber: t, data: null, error: errorMessage, loading: false }
               : r
           ));
-          return { trackingNumber: t, data: null, error: err.message, loading: false };
+          return { trackingNumber: t, data: null, error: errorMessage, loading: false };
         }
       });
 
@@ -116,14 +118,13 @@ export function useShipmentSearch(): UseShipmentSearchResult {
       setBulkResults([]);
       setSelectedTracking(null);
       setLoading(true);
-      setError('');
       
       try {
         const data = await fetchShipment(trackingNumber);
         setShipmentData(data);
       } catch (err) {
-        console.error('Error:', err);
-        setError(err instanceof Error ? err.message : 'Error al buscar el envío');
+        const errorMessage = err instanceof Error ? err.message : 'Error al buscar el envío';
+        setError(errorMessage);
         setShipmentData(null);
       } finally {
         setLoading(false);
