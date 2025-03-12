@@ -19,6 +19,50 @@ export type EventTypeCode =
   | 'MANUAL_SCAN'       // Escaneo manual
   | string;             // Otros tipos de eventos
 
+export interface CurrentStatus {
+  status_id: string;
+  status_code: StatusCode;
+  status_datetime: string;
+  processed_datetime: string;
+}
+
+export interface ItemStatusEvent {
+  code: string;
+  datetime: string;
+  hub_code: string;
+  event_class: string;
+  event_args: Record<string, any>;
+}
+
+export interface StatusTrackingEntry {
+  id: string;
+  code: StatusCode;
+  added_datetime: string;
+  event: ItemStatusEvent;
+  cancellation_info: null | any;
+}
+
+export interface ItemStatusResponse {
+  id: string;
+  shipping_code: string;
+  current_status: CurrentStatus;
+  client_code: string;
+  origin_postal_code: string;
+  origin_hub_code: string;
+  destin_postal_code: string;
+  destin_hub_code: string;
+  events: ItemStatusEvent[];
+  status_tracking: StatusTrackingEntry[];
+  status_transition_errors: any[];
+  audit: {
+    created_datetime: string;
+    created_by: string;
+    modified_datetime: string;
+    modified_by: string;
+  };
+  version: number;
+}
+
 export interface ShippingEvent {
   code: StatusCode;
   description: string;
@@ -31,7 +75,7 @@ export interface ShippingEvent {
     event_courier_code?: string | null;
     signee_name?: string | null;
     event_text?: string;
-    status_name?: string; // Nombre del estado (ej: "DELIVERY")
+    status_name?: string;
     additionals?: Array<{
       additionalCode: string;
       additionalSubCode?: string;

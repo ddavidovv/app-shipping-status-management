@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X, Code, Copy, Check, Loader2, AlertCircle, Box } from 'lucide-react';
 import { eventService } from '../services/eventService';
 import { useAuth } from '../context/AuthContext';
+import { CurrentStatus } from '../types';
 
 interface Props {
   isOpen: boolean;
@@ -30,6 +31,34 @@ export default function CancelEventModal({
   const [copied, setCopied] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [result, setResult] = useState<{ success: boolean; message: string } | null>(null);
+  const [currentStatus, setCurrentStatus] = useState<CurrentStatus | null>(null);
+  const [loadingStatus, setLoadingStatus] = useState(false);
+  const [statusError, setStatusError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (isOpen && packageCode) {
+      const fetchCurrentStatus = async () => {
+        setLoadingStatus(true);
+        setStatusError(null);
+        try {
+          console.log('🔍 Fetching current status for package:', packageCode);
+          const response = await eventService.getItemStatus(packageCode);
+          console.log('✅ Current status received:', response.current_status);
+          setCurrentStatus(response.current_status);
+        } catch (error) {
+          console.error('❌ Error fetching current status:', error);
+          setStatusError(error instanceof Error ? error.message : 'Error al obtener el estado actual');
+        } finally {
+          setLoadingStatus(false);
+        }
+      };
+
+      fetchCurrentStatus();
+    } else {
+      setCurrentStatus(null);
+      setStatusError(null);
+    }
+  }, [isOpen, packageCode]);
 
   useEffect(() => {
     if (isOpen) {
@@ -46,17 +75,18 @@ export default function CancelEventModal({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!reason.trim() || isSubmitting) return;
+    if (!reason.trim() || isSubmitting || !currentStatus) return;
     
     setIsSubmitting(true);
     setResult(null);
     
     try {
+      console.log('📤 Sending cancellation request with current status:', currentStatus);
       const response = await eventService.cancelStatus(
-        packageCode || '', // Código del bulto para la URL
-        eventDate, 
+        packageCode,
+        currentStatus.status_datetime,
         reason,
-        eventDescription // Descripción del estado para el payload
+        currentStatus.status_id
       );
       
       if (response.success) {
@@ -84,11 +114,11 @@ export default function CancelEventModal({
     }
   };
 
-  const curlCommand = eventService.generateCurlCommand(
-    packageCode || '', // Código del bulto para la URL
-    eventDate,
-    eventDescription // Descripción del estado para el payload
-  );
+  const curlCommand = currentStatus ? eventService.generateCurlCommand(
+    packageCode,
+    currentStatus.status_datetime,
+    currentStatus.status_id
+  ) : '';
 
   const handleCopyClick = () => {
     navigator.clipboard.writeText(curlCommand);
@@ -135,6 +165,28 @@ export default function CancelEventModal({
             </div>
           )}
 
+          {loadingStatus ? (
+            <div className="flex items-center gap-2 p-3 bg-gray-50 text-gray-600 rounded">
+              <Loader2 className="w-4 h-4 animate-spin" />
+              <span className="text-sm">Consultando estado actual...</span>
+            </div>
+          ) : statusError ? (
+            <div className="flex items-center gap-2 p-3 bg-red-50 text-red-700 rounded">
+              <AlertCircle className="w-4 h-4" />
+              <span className="text-sm">{statusError}</span>
+            </div>
+          ) : currentStatus && (
+            <div className="p-3 bg-gray-50 rounded space-y-1">
+              <p className="text-sm font-medium text-gray-900">Estado actual del bulto:</p>
+              <p className="text-sm text-gray-600">
+                {currentStatus.status_id} ({currentStatus.status_code})
+              </p>
+              <p className="text-xs text-gray-500">
+                Fecha: {new Date(currentStatus.status_datetime).toLocaleString()}
+              </p>
+            </div>
+          )}
+
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Motivo de la anulación
@@ -146,7 +198,7 @@ export default function CancelEventModal({
               rows={3}
               required
               placeholder="Explica el motivo de la anulación..."
-              disabled={isSubmitting}
+              disabled={isSubmitting || !currentStatus}
             />
           </div>
 
@@ -172,13 +224,13 @@ export default function CancelEventModal({
               type="button"
               onClick={() => setShowCurl(!showCurl)}
               className="flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900"
-              disabled={isSubmitting}
+              disabled={isSubmitting || !currentStatus}
             >
               <Code className="w-4 h-4" />
               {showCurl ? 'Ocultar comando curl (debug)' : 'Mostrar comando curl (debug)'}
             </button>
             
-            {showCurl && (
+            {showCurl && currentStatus && (
               <div className="mt-2 relative">
                 <div className="bg-gray-800 text-gray-200 p-3 rounded-md text-xs overflow-x-auto">
                   <pre className="whitespace-pre-wrap">{curlCommand}</pre>
@@ -206,7 +258,7 @@ export default function CancelEventModal({
             </button>
             <button
               type="submit"
-              disabled={isSubmitting || !reason.trim()}
+              disabled={isSubmitting || !reason.trim() || !currentStatus}
               className="px-4 py-2 text-sm font-medium text-white bg-red-900 rounded-md hover:bg-red-800 disabled:opacity-50 flex items-center gap-2"
             >
               {isSubmitting ? (

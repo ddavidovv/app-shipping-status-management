@@ -1,7 +1,36 @@
 // Simulación de endpoints para eventos
 import { useAuth } from '../context/AuthContext';
+import { ItemStatusResponse } from '../types';
 
 export const eventService = {
+  async getItemStatus(itemCode: string): Promise<ItemStatusResponse> {
+    console.log('📡 Fetching current item status for:', itemCode);
+    const url = `${import.meta.env.VITE_API_URL}/enterprise-portal/shipping-status-mgmt/trf/item-status-v2/v1/item/${itemCode}`;
+    
+    try {
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': import.meta.env.VITE_JWT_TOKEN,
+          'client_secret': import.meta.env.VITE_CLIENT_SECRET,
+          'client_id': import.meta.env.VITE_CLIENT_ID
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      console.log('✅ Current item status received:', data.current_status);
+      return data;
+    } catch (err) {
+      console.error('❌ Error fetching item status:', err);
+      throw err;
+    }
+  },
+
   async createEvent(eventData: any) {
     // Simular llamada al backend
     console.log('Creating event:', eventData);
@@ -32,25 +61,27 @@ export const eventService = {
           userEmail = decodedPayload.email;
         }
       }
-    } catch (error) {
-      console.error('Error al obtener el email del usuario:', error);
-    }
-    
-    // Construir la URL correcta para la cancelación de estado
-    const url = `${import.meta.env.VITE_API_URL}/enterprise-portal/shipping-status-mgmt/trf/item-status-v2/v1/item/${itemCode}/cancel-status`;
-    
-    // En el body, status_id es la descripción del estado que queremos anular
-    const requestBody = {
-      event_datetime: eventDateTime,
-      status_id: statusDescription,
-      user_id: userEmail
-    };
 
-    console.log('Cancelando estado con los siguientes parámetros:');
-    console.log('URL:', url);
-    console.log('Body:', JSON.stringify(requestBody, null, 2));
-    
-    try {
+      // Primero obtenemos el estado actual del bulto
+      console.log('🔍 Fetching current status before cancellation...');
+      const itemStatus = await this.getItemStatus(itemCode);
+      console.log('📦 Current status:', itemStatus.current_status);
+
+      // Construir la URL correcta para la cancelación de estado
+      const url = `${import.meta.env.VITE_API_URL}/enterprise-portal/shipping-status-mgmt/trf/item-status-v2/v1/item/${itemCode}/cancel-status`;
+      
+      // Usamos los datos del estado actual para la cancelación
+      const requestBody = {
+        event_datetime: itemStatus.current_status.status_datetime,
+        status_id: itemStatus.current_status.status_id,
+        user_id: userEmail
+      };
+
+      console.log('📤 Sending cancellation request with params:', {
+        url,
+        body: requestBody
+      });
+      
       const response = await fetch(url, {
         method: 'PATCH',
         headers: {
@@ -67,14 +98,14 @@ export const eventService = {
       }
 
       const data = await response.json();
-      console.log('Respuesta del servidor:', data);
+      console.log('✅ Cancellation response:', data);
       
       return {
         success: true,
         data
       };
     } catch (err) {
-      console.error('Error cancelling status:', err);
+      console.error('❌ Error during status cancellation:', err);
       return {
         success: false,
         error: err instanceof Error ? err.message : 'Error al anular el estado'
