@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Package } from '../types';
-import { Box, ChevronDown, ChevronRight, XCircle, CheckCircle } from 'lucide-react';
+import { Box, ChevronDown, ChevronRight, CheckCircle } from 'lucide-react';
 import TrackingTimeline from './TrackingTimeline';
 import { isStatusCancellable } from '../config/eventConfig';
 
@@ -57,18 +57,6 @@ export default function PackagesList({ packages, onCancelStatus }: Props) {
                         <span className={`text-sm px-2 py-0.5 rounded-full ${canBeDelivered ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-700'}`}>
                           {lastStatus.description}
                         </span>
-                        {onCancelStatus && isCancellable && (
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onCancelStatus(lastStatus, pkg.item_code, pkg.package_number);
-                            }}
-                            className="p-0.5 text-gray-400 hover:text-red-500 transition-colors"
-                            title="Anular estado"
-                          >
-                            <XCircle className="w-4 h-4" />
-                          </button>
-                        )}
                       </div>
                     )}
                     {canBeDelivered && (

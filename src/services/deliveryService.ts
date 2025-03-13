@@ -36,6 +36,9 @@ export const deliveryService = {
         routeCode
       });
 
+      // Extraer la fecha de entrega del actionDateTime (YYYY-MM-DD)
+      const deliveryDate = actionDateTime.split('T')[0];
+
       const payload = {
         routeCode,
         shippingCode,
@@ -47,7 +50,8 @@ export const deliveryService = {
         typeNumber: isPudo ? 6 : 3,
         optionCode: "",
         actionDateTime,
-        stopOrder: 0
+        stopOrder: 0,
+        deliveryDate
       };
 
       const response = await fetch(
@@ -85,6 +89,8 @@ export const deliveryService = {
     actionDateTime: string,
     routeCode: string
   ): string {
+    const deliveryDate = actionDateTime.split('T')[0];
+
     const payload = {
       routeCode,
       shippingCode,
@@ -96,7 +102,8 @@ export const deliveryService = {
       typeNumber: isPudo ? 6 : 3,
       optionCode: "",
       actionDateTime,
-      stopOrder: 0
+      stopOrder: 0,
+      deliveryDate
     };
 
     return `curl --location '${import.meta.env.VITE_API_URL}/enterprise-portal/shipping-status-mgmt/dlv/last-mile/v1/journey-snapshots' \\

@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
-import { MapPin, User, Package, ChevronDown, ChevronRight, RefreshCw, CheckCircle2, Home, Box, Building } from 'lucide-react';
+import { MapPin, User, Package, ChevronDown, ChevronRight, RefreshCw, CheckCircle2, Home, Box, Building, XCircle } from 'lucide-react';
 import { ShippingData } from '../types';
 import { deliveryService } from '../services/deliveryService';
 import QuickDeliveryModal from './QuickDeliveryModal';
 import PudoInfoModal from './PudoInfoModal';
+import CancelEventModal from './CancelEventModal';
+import { isStatusCancellable } from '../config/eventConfig';
 
 interface Props {
   data: ShippingData;
@@ -14,6 +16,7 @@ export default function ShipmentDetails({ data, onRefresh }: Props) {
   const [isExpanded, setIsExpanded] = useState(true);
   const [isQuickDeliveryOpen, setIsQuickDeliveryOpen] = useState(false);
   const [isPudoInfoOpen, setIsPudoInfoOpen] = useState(false);
+  const [isCancelEventOpen, setIsCancelEventOpen] = useState(false);
 
   const isDelivered = deliveryService.isDelivered(data);
   const isPudoAllowed = deliveryService.isPudoDeliveryAllowed(data);
@@ -24,6 +27,19 @@ export default function ShipmentDetails({ data, onRefresh }: Props) {
 
   // Obtener la información del PUDO si está disponible
   const pudoInfo = data.additionals?.find(additional => additional.additionalCode === 'PER');
+
+  // Verificar si hay algún bulto con estado cancelable
+  const hasCancellableStatus = data.items_history.some(item => {
+    const lastStatus = item.events
+      .filter(event => event.type === 'STATUS')
+      .sort((a, b) => new Date(b.event_date).getTime() - new Date(a.event_date).getTime())[0];
+    return lastStatus && isStatusCancellable(lastStatus.code);
+  });
+
+  const handleCancelEvent = () => {
+    console.log('↻ Refreshing data after cancellation');
+    onRefresh();
+  };
 
   return (
     <div className="bg-white rounded-lg shadow-sm border border-gray-100">
@@ -69,16 +85,30 @@ export default function ShipmentDetails({ data, onRefresh }: Props) {
             Actualizar
           </button>
           {!isDelivered && (
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                setIsQuickDeliveryOpen(true);
-              }}
-              className="flex items-center gap-1 px-2 py-1 text-sm bg-green-600 text-white rounded hover:bg-green-700"
-            >
-              <CheckCircle2 className="w-3 h-3" />
-              Entregar
-            </button>
+            <>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsQuickDeliveryOpen(true);
+                }}
+                className="flex items-center gap-1 px-2 py-1 text-sm bg-green-600 text-white rounded hover:bg-green-700"
+              >
+                <CheckCircle2 className="w-3 h-3" />
+                Entregar
+              </button>
+              {hasCancellableStatus && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setIsCancelEventOpen(true);
+                  }}
+                  className="flex items-center gap-1 px-2 py-1 text-sm bg-red-600 text-white rounded hover:bg-red-700"
+                >
+                  <XCircle className="w-3 h-3" />
+                  Anular Estado
+                </button>
+              )}
+            </>
           )}
           {isExpanded ? (
             <ChevronDown className="w-4 h-4 text-gray-400" />
@@ -177,6 +207,20 @@ export default function ShipmentDetails({ data, onRefresh }: Props) {
           organicPointCode={pudoInfo.organicPointCode}
         />
       )}
+
+      <CancelEventModal
+        isOpen={isCancelEventOpen}
+        onClose={() => setIsCancelEventOpen(false)}
+        onCancelEvent={handleCancelEvent}
+        eventDescription=""
+        eventCode=""
+        eventDate=""
+        packages={data.items_history.map((item, index) => ({
+          itemCode: item.item_code,
+          packageNumber: index + 1,
+          events: item.events
+        }))}
+      />
     </div>
   );
 }
