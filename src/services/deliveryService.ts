@@ -49,7 +49,7 @@ export const deliveryService = {
         },
         typeNumber: isPudo ? 6 : 3,
         optionCode: "",
-        actionDateTime,
+        actionDatetime: actionDateTime,
         stopOrder: 0,
         deliveryDate
       };
@@ -101,7 +101,7 @@ export const deliveryService = {
       },
       typeNumber: isPudo ? 6 : 3,
       optionCode: "",
-      actionDateTime,
+      actionDatetime: actionDateTime,
       stopOrder: 0,
       deliveryDate
     };
