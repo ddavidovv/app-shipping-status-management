@@ -1,5 +1,4 @@
 // Simulación de endpoints para eventos
-import { useAuth } from '../context/AuthContext';
 import { ItemStatusResponse } from '../types';
 
 export const eventService = {
@@ -19,7 +18,22 @@ export const eventService = {
       });
 
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        const errorText = await response.text().catch(() => 'No se pudo leer el cuerpo de la respuesta');
+        console.error(`❌ Server responded with status ${response.status}:`, errorText);
+        
+        // Crear un error más descriptivo
+        let errorMessage = `HTTP error! status: ${response.status}`;
+        if (response.status === 500) {
+          errorMessage = `Error del servidor (500): El servidor no pudo procesar la solicitud. Detalles: ${errorText.substring(0, 100)}`;
+        } else if (response.status === 404) {
+          errorMessage = `No se encontró el recurso (404): El bulto con código ${itemCode} no existe o no está disponible.`;
+        } else if (response.status === 401 || response.status === 403) {
+          errorMessage = `Error de autenticación (${response.status}): No tiene permisos para acceder a este recurso.`;
+        } else if (response.status === 400) {
+          errorMessage = `Solicitud incorrecta (400): Verifique el código del bulto e intente nuevamente.`;
+        }
+        
+        throw new Error(errorMessage);
       }
 
       const data = await response.json();
@@ -27,6 +41,16 @@ export const eventService = {
       return data;
     } catch (err) {
       console.error('❌ Error fetching item status:', err);
+      
+      // Si es un error de red (no HTTP), proporcionar un mensaje más claro
+      if (err instanceof Error && !err.message.includes('HTTP error')) {
+        if (err.message.includes('Failed to fetch') || err.message.includes('NetworkError')) {
+          throw new Error('Error de conexión: No se pudo conectar con el servidor. Verifique su conexión a internet.');
+        } else if (err.message.includes('timeout')) {
+          throw new Error('Tiempo de espera agotado: El servidor tardó demasiado en responder. Intente nuevamente más tarde.');
+        }
+      }
+      
       throw err;
     }
   },
@@ -74,7 +98,8 @@ export const eventService = {
       const requestBody = {
         event_datetime: itemStatus.current_status.status_datetime,
         status_id: itemStatus.current_status.status_id,
-        user_id: userEmail
+        user_id: userEmail,
+        reason: reason // Añadimos el motivo de la cancelación
       };
 
       console.log('📤 Sending cancellation request with params:', {
@@ -94,7 +119,9 @@ export const eventService = {
       });
 
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        const errorData = await response.text();
+        console.error('❌ Server error response:', errorData);
+        throw new Error(`HTTP error! status: ${response.status}, message: ${errorData}`);
       }
 
       const data = await response.json();
@@ -138,7 +165,8 @@ export const eventService = {
     const requestBody = {
       event_datetime: eventDateTime,
       status_id: statusDescription,
-      user_id: userEmail
+      user_id: userEmail,
+      reason: "Motivo de cancelación" // Agregamos un motivo por defecto para el curl
     };
 
     // Generar el comando curl

@@ -41,15 +41,15 @@ export default function SearchBar({
             Puedes pegar múltiples envíos desde Excel (usa Shift + Enter para añadir saltos de línea)
           </p>
           {error && (
-            <div className="mt-2 flex items-center gap-2 text-amber-600 bg-amber-50 p-2 rounded-md">
-              <AlertCircle className="w-4 h-4" />
+            <div className="mt-2 flex items-center gap-2 text-red-600 bg-red-50 p-3 rounded-md">
+              <AlertCircle className="w-4 h-4 flex-shrink-0" />
               <p className="text-sm">{error}</p>
             </div>
           )}
         </div>
         <button
           onClick={onSearch}
-          disabled={loading || !value.trim() || error !== null}
+          disabled={loading || !value.trim()}
           className="px-6 py-2 bg-red-900 text-white rounded-lg hover:bg-red-800 focus:outline-none focus:ring-2 focus:ring-red-500 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 h-fit"
         >
           {loading ? (

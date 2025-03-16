@@ -4,19 +4,18 @@ import { ShippingData } from '../types';
 import { deliveryService } from '../services/deliveryService';
 import QuickDeliveryModal from './QuickDeliveryModal';
 import PudoInfoModal from './PudoInfoModal';
-import CancelEventModal from './CancelEventModal';
 import { isStatusCancellable } from '../config/eventConfig';
 
 interface Props {
   data: ShippingData;
   onRefresh: () => void;
+  onCancelStatus?: (status: any, packageCode?: string, packageNumber?: number) => void;
 }
 
-export default function ShipmentDetails({ data, onRefresh }: Props) {
+export default function ShipmentDetails({ data, onRefresh, onCancelStatus }: Props) {
   const [isExpanded, setIsExpanded] = useState(true);
   const [isQuickDeliveryOpen, setIsQuickDeliveryOpen] = useState(false);
   const [isPudoInfoOpen, setIsPudoInfoOpen] = useState(false);
-  const [isCancelEventOpen, setIsCancelEventOpen] = useState(false);
 
   const isDelivered = deliveryService.isDelivered(data);
   const isPudoAllowed = deliveryService.isPudoDeliveryAllowed(data);
@@ -36,9 +35,37 @@ export default function ShipmentDetails({ data, onRefresh }: Props) {
     return lastStatus && isStatusCancellable(lastStatus.code);
   });
 
-  const handleCancelEvent = () => {
-    console.log('↻ Refreshing data after cancellation');
-    onRefresh();
+  // Encontrar el primer bulto con estado cancelable para usarlo al hacer clic en "Anular Estado"
+  const findCancellableStatus = () => {
+    for (const item of data.items_history) {
+      const lastStatus = item.events
+        .filter(event => event.type === 'STATUS')
+        .sort((a, b) => new Date(b.event_date).getTime() - new Date(a.event_date).getTime())[0];
+      
+      if (lastStatus && isStatusCancellable(lastStatus.code)) {
+        return {
+          status: lastStatus,
+          itemCode: item.item_code,
+          packageNumber: data.items_history.indexOf(item) + 1
+        };
+      }
+    }
+    return null;
+  };
+
+  const handleAnularEstadoClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!onCancelStatus) return;
+    
+    console.log('⭐ ShipmentDetails - Iniciando anulación de estado');
+    const cancellableItem = findCancellableStatus();
+    if (cancellableItem) {
+      onCancelStatus(
+        cancellableItem.status, 
+        cancellableItem.itemCode, 
+        cancellableItem.packageNumber
+      );
+    }
   };
 
   return (
@@ -96,12 +123,9 @@ export default function ShipmentDetails({ data, onRefresh }: Props) {
                 <CheckCircle2 className="w-3 h-3" />
                 Entregar
               </button>
-              {hasCancellableStatus && (
+              {hasCancellableStatus && onCancelStatus && (
                 <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setIsCancelEventOpen(true);
-                  }}
+                  onClick={handleAnularEstadoClick}
                   className="flex items-center gap-1 px-2 py-1 text-sm bg-red-600 text-white rounded hover:bg-red-700"
                 >
                   <XCircle className="w-3 h-3" />
@@ -207,20 +231,6 @@ export default function ShipmentDetails({ data, onRefresh }: Props) {
           organicPointCode={pudoInfo.organicPointCode}
         />
       )}
-
-      <CancelEventModal
-        isOpen={isCancelEventOpen}
-        onClose={() => setIsCancelEventOpen(false)}
-        onCancelEvent={handleCancelEvent}
-        eventDescription=""
-        eventCode=""
-        eventDate=""
-        packages={data.items_history.map((item, index) => ({
-          itemCode: item.item_code,
-          packageNumber: index + 1,
-          events: item.events
-        }))}
-      />
     </div>
   );
 }

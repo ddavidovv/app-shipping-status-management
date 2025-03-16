@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { XCircle, Loader2 } from 'lucide-react';
 import { ViewMode, Package } from './types';
 import TrackingTimeline from './components/TrackingTimeline';
@@ -27,7 +27,44 @@ function App() {
     isOpen: boolean;
     packageCode?: string;
     packageNumber?: number;
-  }>({ event: null, isOpen: false });
+    result?: {
+      success: boolean;
+      message: string;
+      packageNumber?: number;
+    } | null;
+  }>({ event: null, isOpen: false, result: null });
+
+  // Estado para mantener el resultado de la última operación de anulación
+  // const [lastCancellationResult, setLastCancellationResult] = useState<{
+  //   success: boolean;
+  //   message: string;
+  //   packageNumber?: number;
+  // } | null>(null);
+
+  // Usar referencia para mantener estado entre re-renderizados
+  const cancelEventDataRef = React.useRef({
+    lastEvent: null as any,
+    lastPackageCode: null as string | null,
+    lastPackageNumber: null as number | null
+  });
+
+  // Log para el seguimiento del estado del modal
+  React.useEffect(() => {
+    console.log(' App.tsx - cancelEventData changed:', { 
+      isOpen: cancelEventData.isOpen, 
+      hasEvent: !!cancelEventData.event,
+      packageCode: cancelEventData.packageCode
+    });
+
+    // Guardar los últimos datos válidos cuando se abre el modal
+    if (cancelEventData.isOpen && cancelEventData.event) {
+      cancelEventDataRef.current = {
+        lastEvent: cancelEventData.event,
+        lastPackageCode: cancelEventData.packageCode || null,
+        lastPackageNumber: cancelEventData.packageNumber || null
+      };
+    }
+  }, [cancelEventData]);
 
   const {
     trackingNumber,
@@ -44,6 +81,29 @@ function App() {
     handleBulkSelect,
     setIsExpanded
   } = useShipmentSearch();
+
+  // Función personalizada para resetear el estado de la aplicación
+  const resetAppState = useCallback(() => {
+    console.log(' App.tsx - Reseteando estado de la aplicación');
+    // Resetear el estado del modal de anulación
+    setCancelEventData({ 
+      event: null, 
+      isOpen: false,
+      packageCode: undefined,
+      packageNumber: undefined,
+      result: null
+    });
+    // Resetear otras variables de estado si es necesario
+  }, []);
+
+  // Sobrescribir el handleSearch del hook para incluir el reseteo
+  const originalHandleSearch = handleSearch;
+  const enhancedHandleSearch = useCallback(async () => {
+    // Resetear el estado antes de realizar la búsqueda
+    resetAppState();
+    // Llamar a la función original de búsqueda
+    return await originalHandleSearch();
+  }, [originalHandleSearch, resetAppState]);
 
   const handleClose = () => {
     try {
@@ -142,7 +202,7 @@ function App() {
     try {
       const result = await eventService.createEvent(eventData);
       if (result.success) {
-        await handleSearch();
+        await enhancedHandleSearch();
       }
     } catch (err) {
       console.error('Error creating event:', err);
@@ -150,33 +210,99 @@ function App() {
   };
 
   const handleCancelStatus = async (status: any, packageCode?: string, packageNumber?: number) => {
-    setCancelEventData({ 
-      event: status, 
-      isOpen: true,
-      packageCode,
-      packageNumber
+    console.log(' App.tsx - handleCancelStatus llamado:', { status, packageCode, packageNumber });
+    
+    // Evitar cerrar/abrir el modal para prevenir problemas de estado
+    const isModalAlreadyOpen = cancelEventData.isOpen;
+    
+    setCancelEventData(prev => {
+      console.log(' App.tsx - Actualizando cancelEventData con:', { 
+        isAlreadyOpen: isModalAlreadyOpen,
+        newStatus: status, 
+        newCode: packageCode 
+      });
+      
+      return { 
+        event: status, 
+        isOpen: true,
+        packageCode,
+        packageNumber,
+        result: null
+      };
     });
   };
 
   const submitCancelEvent = async (eventId: string, reason: string) => {
     try {
-      if (!shipmentData || !cancelEventData.event) return;
-
-      const itemCode = cancelEventData.packageCode || '';
+      // Verificar que tenemos los datos necesarios
+      if (!cancelEventData.packageCode || !cancelEventData.event) {
+        console.error('No hay datos suficientes para cancelar el estado');
+        setCancelEventData(prev => ({
+          ...prev,
+          result: {
+            success: false,
+            message: 'Datos insuficientes para cancelar el estado'
+          }
+        }));
+        return;
+      }
       
+      const packageCode = cancelEventData.packageCode;
+      console.log('Submitting cancel event:', { eventId, reason, packageCode });
+      
+      // Intentar cancelar el estado
       const result = await eventService.cancelStatus(
-        itemCode,
-        cancelEventData.event.event_date,
-        reason,
+        packageCode, 
+        cancelEventData.event.event_date, 
+        reason, 
         cancelEventData.event.description
       );
-
+      
+      console.log('Cancel status result:', result);
+      
+      // Actualizar el estado con el resultado
+      setCancelEventData(prev => ({
+        ...prev,
+        result: {
+          success: result.success,
+          message: result.error || (result.success ? 'Estado anulado correctamente' : 'Error al anular el estado')
+        }
+      }));
+      
+      // Si la cancelación fue exitosa, actualizar los datos del envío
       if (result.success) {
         await handleSearch();
       }
-    } catch (err) {
-      console.error('Error cancelling status:', err);
+    } catch (error) {
+      console.error('Error in submitCancelEvent:', error);
+      
+      // Crear un mensaje de error descriptivo
+      let errorMessage = 'Error al anular el estado';
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      }
+      
+      // Actualizar el estado con el error
+      setCancelEventData(prev => ({
+        ...prev,
+        result: {
+          success: false,
+          message: errorMessage
+        }
+      }));
     }
+  };
+
+  const handleCloseEventModal = () => {
+    console.log(' App.tsx - Llamando a setCancelEventData para cerrar modal');
+    // Resetear completamente el estado del modal al cerrarlo
+    setCancelEventData({ 
+      event: null, 
+      isOpen: false,
+      packageCode: undefined,
+      packageNumber: undefined,
+      result: null
+    });
   };
 
   const handleViewModeChange = (mode: ViewMode) => {
@@ -226,11 +352,11 @@ function App() {
           value={trackingNumber}
           onChange={setTrackingNumber}
           onKeyDown={handleKeyPress}
-          onSearch={handleSearch}
+          onSearch={enhancedHandleSearch}
           isExpanded={isExpanded}
           setIsExpanded={setIsExpanded}
           loading={loading}
-          error={bulkSearchError}
+          error={error || bulkSearchError}
         />
 
         <div className="flex-1 flex gap-4 min-h-0">
@@ -249,7 +375,8 @@ function App() {
               <div className="space-y-4">
                 <ShipmentDetails 
                   data={shipmentData}
-                  onRefresh={handleSearch}
+                  onRefresh={enhancedHandleSearch}
+                  onCancelStatus={handleCancelStatus}
                 />
                 
                 <ViewModeSelector
@@ -275,19 +402,22 @@ function App() {
             
             <CancelEventModal
               isOpen={cancelEventData.isOpen}
-              onClose={() => setCancelEventData({ event: null, isOpen: false })}
+              onClose={handleCloseEventModal}
               onCancelEvent={submitCancelEvent}
-              eventDescription={cancelEventData.event?.description || ''}
-              eventCode={cancelEventData.event?.code || ''}
-              eventDate={cancelEventData.event?.event_date || ''}
               packageCode={cancelEventData.packageCode}
               packageNumber={cancelEventData.packageNumber}
+              packages={shipmentData.items_history.map((item, index) => ({
+                itemCode: item.item_code,
+                packageNumber: index + 1,
+                events: item.events
+              }))}
+              lastResult={cancelEventData.result}
             />
 
             <QuickDeliveryModal
               isOpen={isDeliveryModalOpen}
               onClose={() => setIsDeliveryModalOpen(false)}
-              onDeliver={handleSearch}
+              onDeliver={enhancedHandleSearch}
               shippingCode={shipmentData.shipping_code}
               isPudoAllowed={deliveryService.isPudoDeliveryAllowed(shipmentData)}
               pudoInfo={shipmentData.additionals?.find(a => a.additionalCode === 'PER')}

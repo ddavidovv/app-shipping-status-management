@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { X, Loader2, Package, MapPin, Code, Copy, Check, Clock, AlertCircle, Info, Box } from 'lucide-react';
 import { deliveryService } from '../services/deliveryService';
 import { StatusCode, ShippingData } from '../types';
@@ -47,29 +47,54 @@ export default function QuickDeliveryModal({
   currentStatus,
   shipmentData
 }: Props) {
+  // Use ref to avoid state resets during rerenders
+  const isInitialized = useRef(false);
   const [deliveryType, setDeliveryType] = useState<'regular' | 'pudo'>(isPudoAllowed ? 'pudo' : 'regular');
   const [signeeName, setSigneeName] = useState('');
   const [signeeId, setSigneeId] = useState('');
-  const [deliveryDateTime, setDeliveryDateTime] = useState('');
+  const [deliveryDatetime, setDeliveryDatetime] = useState('');
   const [routeCode, setRouteCode] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showCurl, setShowCurl] = useState(false);
   const [copied, setCopied] = useState(false);
   const [showStatusTooltip, setShowStatusTooltip] = useState(false);
+  const [deliverySuccess, setDeliverySuccess] = useState(false);
 
   // Obtener el routeCode del último estado "En reparto"
   useEffect(() => {
-    if (isOpen && shipmentData) {
-      const lastDeliveryStatus = shipmentData.shipping_history.events
-        .filter(event => event.type === 'STATUS' && event.code === '1500')
-        .sort((a, b) => new Date(b.event_date).getTime() - new Date(a.event_date).getTime())[0];
+    if (isOpen && !isInitialized.current) {
+      isInitialized.current = true;
+      
+      // Reset state when modal opens
+      setDeliverySuccess(false);
+      setError(null);
+      setIsSubmitting(false);
+      
+      if (shipmentData) {
+        const lastDeliveryStatus = shipmentData.shipping_history.events
+          .filter(event => event.type === 'STATUS' && event.code === '1500')
+          .sort((a, b) => new Date(b.event_date).getTime() - new Date(a.event_date).getTime())[0];
 
-      if (lastDeliveryStatus?.detail?.event_courier_code) {
-        setRouteCode(lastDeliveryStatus.detail.event_courier_code);
+        if (lastDeliveryStatus?.detail?.event_courier_code) {
+          setRouteCode(lastDeliveryStatus.detail.event_courier_code);
+        }
       }
+    } else if (!isOpen) {
+      isInitialized.current = false;
     }
   }, [isOpen, shipmentData]);
+
+  // Log state changes for debugging
+  useEffect(() => {
+    console.log('🔄 Delivery Modal State:', { 
+      isOpen, 
+      deliverySuccess, 
+      isSubmitting,
+      error: error ? 'has error' : 'no error',
+      initialized: isInitialized.current
+    });
+  }, [isOpen, deliverySuccess, isSubmitting, error]);
 
   // Check if any package is in a valid state for delivery
   const hasDeliverablePackage = shipmentData.items_history.some(item => {
@@ -96,10 +121,11 @@ export default function QuickDeliveryModal({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if ((!signeeName.trim() && deliveryType === 'regular') || !deliveryDateTime || !routeCode.trim() || isSubmitting) return;
+    if ((!signeeName.trim() && deliveryType === 'regular') || !deliveryDatetime || !routeCode.trim() || isSubmitting) return;
 
     setIsSubmitting(true);
     setError(null);
+    setDeliverySuccess(false);
 
     try {
       const signeeInfo = {
@@ -109,7 +135,14 @@ export default function QuickDeliveryModal({
       };
 
       // Convert local datetime to UTC ISO string
-      const utcDate = new Date(deliveryDateTime).toISOString();
+      const utcDate = new Date(deliveryDatetime).toISOString();
+
+      console.log('📤 Sending delivery request:', {
+        shippingCode,
+        deliveryType,
+        utcDate,
+        routeCode
+      });
 
       const result = await deliveryService.deliverShipment(
         shippingCode,
@@ -119,16 +152,26 @@ export default function QuickDeliveryModal({
         routeCode.trim()
       );
 
-      if (result.success) {
-        onDeliver();
-        onClose();
-      } else {
-        setError(result.error || 'Error al realizar la entrega');
+      if (isOpen) { // Only update state if modal is still open
+        if (result.success) {
+          console.log('✅ Delivery successful');
+          setDeliverySuccess(true);
+          onDeliver(); // Notify parent to refresh data but don't close modal
+        } else {
+          console.error('❌ Delivery failed:', result.error);
+          setError(result.error || 'Error al realizar la entrega');
+        }
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error al realizar la entrega');
+      console.error('💥 Error during delivery:', err);
+      if (isOpen) {
+        setError(err instanceof Error ? err.message : 'Error al realizar la entrega');
+      }
     } finally {
-      setIsSubmitting(false);
+      console.log('🏁 Delivery process completed');
+      if (isOpen) {
+        setIsSubmitting(false);
+      }
     }
   };
 
@@ -140,7 +183,7 @@ export default function QuickDeliveryModal({
     };
     
     // Ensure UTC ISO string for curl command
-    const utcDate = deliveryDateTime ? new Date(deliveryDateTime).toISOString() : new Date().toISOString();
+    const utcDate = deliveryDatetime ? new Date(deliveryDatetime).toISOString() : new Date().toISOString();
     
     return deliveryService.generateCurlCommand(
       shippingCode,
@@ -174,7 +217,13 @@ export default function QuickDeliveryModal({
     
     // Format as YYYY-MM-DDThh:mm:ss
     const formattedDate = `${year}-${month}-${day}T${hours}:${mins}:${secs}`;
-    setDeliveryDateTime(formattedDate);
+    setDeliveryDatetime(formattedDate);
+  };
+
+  // Safely close the modal
+  const handleCloseModal = () => {
+    console.log('🚪 Closing delivery modal manually');
+    onClose();
   };
 
   return (
@@ -183,9 +232,10 @@ export default function QuickDeliveryModal({
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-xl font-semibold text-gray-900">Entrega manual</h2>
           <button
-            onClick={onClose}
+            onClick={handleCloseModal}
             className="text-gray-500 hover:text-gray-700"
             disabled={isSubmitting}
+            type="button"
           >
             <X className="w-5 h-5" />
           </button>
@@ -243,6 +293,17 @@ export default function QuickDeliveryModal({
           )}
         </div>
 
+        {/* Mensaje de éxito */}
+        {deliverySuccess && (
+          <div className="mb-4 p-3 bg-green-50 text-green-800 rounded-lg flex items-center gap-2">
+            <Check className="w-5 h-5 flex-shrink-0" />
+            <div>
+              <p className="font-medium">¡Entrega registrada correctamente!</p>
+              <p className="text-sm">El envío ha sido marcado como entregado.</p>
+            </div>
+          </div>
+        )}
+
         <form onSubmit={handleSubmit} className="space-y-4">
           {isPudoAllowed && (
             <>
@@ -254,6 +315,7 @@ export default function QuickDeliveryModal({
                   <button
                     type="button"
                     onClick={() => setDeliveryType('pudo')}
+                    disabled={isSubmitting || deliverySuccess}
                     className={`flex items-center justify-center gap-2 px-4 py-2 rounded-lg border transition-colors
                       ${deliveryType === 'pudo'
                         ? 'bg-corporate-primary text-white border-corporate-primary'
@@ -265,6 +327,7 @@ export default function QuickDeliveryModal({
                   <button
                     type="button"
                     onClick={() => setDeliveryType('regular')}
+                    disabled={isSubmitting || deliverySuccess}
                     className={`flex items-center justify-center gap-2 px-4 py-2 rounded-lg border transition-colors
                       ${deliveryType === 'regular'
                         ? 'bg-corporate-primary text-white border-corporate-primary'
@@ -303,7 +366,7 @@ export default function QuickDeliveryModal({
                   className="w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-red-500"
                   placeholder="Nombre de quien recibe el envío"
                   required
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || deliverySuccess}
                 />
               </div>
 
@@ -317,7 +380,7 @@ export default function QuickDeliveryModal({
                   onChange={(e) => setSigneeId(e.target.value)}
                   className="w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-red-500"
                   placeholder="Opcional"
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || deliverySuccess}
                 />
               </div>
             </>
@@ -334,7 +397,7 @@ export default function QuickDeliveryModal({
               className="w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-red-500"
               placeholder="Código de ruta del repartidor"
               required
-              disabled={isSubmitting}
+              disabled={isSubmitting || deliverySuccess}
             />
           </div>
 
@@ -350,6 +413,7 @@ export default function QuickDeliveryModal({
                   type="button"
                   onClick={() => handleQuickTimeSelect(option.value)}
                   className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-gray-100 text-gray-700 rounded-full hover:bg-gray-200 transition-colors"
+                  disabled={isSubmitting || deliverySuccess}
                 >
                   <Clock className="w-3.5 h-3.5" />
                   {option.label}
@@ -359,18 +423,19 @@ export default function QuickDeliveryModal({
 
             <input
               type="datetime-local"
-              value={deliveryDateTime}
-              onChange={(e) => setDeliveryDateTime(e.target.value)}
+              value={deliveryDatetime}
+              onChange={(e) => setDeliveryDatetime(e.target.value)}
               className="w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-red-500"
               required
-              disabled={isSubmitting}
+              disabled={isSubmitting || deliverySuccess}
               step="1"
             />
           </div>
 
           {error && (
-            <div className="p-3 rounded-md bg-red-50 text-red-800 text-sm">
-              {error}
+            <div className="p-3 rounded-md bg-red-50 text-red-800 text-sm flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 flex-shrink-0" />
+              <span>{error}</span>
             </div>
           )}
 
@@ -412,32 +477,34 @@ export default function QuickDeliveryModal({
           <div className="flex justify-end gap-2 mt-6">
             <button
               type="button"
-              onClick={onClose}
+              onClick={handleCloseModal}
               className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
               disabled={isSubmitting}
             >
-              Cancelar
+              Cerrar
             </button>
-            <button
-              type="submit"
-              disabled={
-                isSubmitting || 
-                (!signeeName.trim() && deliveryType === 'regular') || 
-                !deliveryDateTime ||
-                !routeCode.trim() ||
-                !hasDeliverablePackage
-              }
-              className="px-4 py-2 text-sm font-medium text-white bg-red-900 rounded-md hover:bg-red-800 disabled:opacity-50 flex items-center gap-2"
-            >
-              {isSubmitting ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  <span>Procesando...</span>
-                </>
-              ) : (
-                <span>Confirmar Entrega</span>
-              )}
-            </button>
+            {!deliverySuccess && (
+              <button
+                type="submit"
+                disabled={
+                  isSubmitting || 
+                  (!signeeName.trim() && deliveryType === 'regular') || 
+                  !deliveryDatetime ||
+                  !routeCode.trim() ||
+                  !hasDeliverablePackage
+                }
+                className="px-4 py-2 text-sm font-medium text-white bg-red-900 rounded-md hover:bg-red-800 disabled:opacity-50 flex items-center gap-2"
+              >
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>Procesando...</span>
+                  </>
+                ) : (
+                  <span>Confirmar Entrega</span>
+                )}
+              </button>
+            )}
           </div>
         </form>
       </div>

@@ -24,7 +24,7 @@ export const deliveryService = {
     shippingCode: string,
     isPudo: boolean,
     signee: SigneeInfo,
-    actionDateTime: string = new Date().toISOString(),
+    actionDatetime: string = new Date().toISOString(),
     routeCode: string
   ): Promise<DeliveryResponse> {
     try {
@@ -32,12 +32,12 @@ export const deliveryService = {
         shippingCode,
         isPudo,
         signee,
-        actionDateTime,
+        actionDatetime,
         routeCode
       });
 
-      // Extraer la fecha de entrega del actionDateTime (YYYY-MM-DD)
-      const deliveryDate = actionDateTime.split('T')[0];
+      // Extraer la fecha de entrega del actionDatetime (YYYY-MM-DD)
+      const deliveryDate = actionDatetime.split('T')[0];
 
       const payload = {
         routeCode,
@@ -49,7 +49,7 @@ export const deliveryService = {
         },
         typeNumber: isPudo ? 6 : 3,
         optionCode: "",
-        actionDatetime: actionDateTime,
+        actionDatetime,
         stopOrder: 0,
         deliveryDate
       };
@@ -86,10 +86,10 @@ export const deliveryService = {
     shippingCode: string,
     isPudo: boolean,
     signee: SigneeInfo,
-    actionDateTime: string,
+    actionDatetime: string,
     routeCode: string
   ): string {
-    const deliveryDate = actionDateTime.split('T')[0];
+    const deliveryDate = actionDatetime.split('T')[0];
 
     const payload = {
       routeCode,
@@ -101,7 +101,7 @@ export const deliveryService = {
       },
       typeNumber: isPudo ? 6 : 3,
       optionCode: "",
-      actionDatetime: actionDateTime,
+      actionDatetime,
       stopOrder: 0,
       deliveryDate
     };

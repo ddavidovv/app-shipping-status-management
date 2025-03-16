@@ -1,16 +1,19 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { X, Loader2, Package, Code, Copy, Check, AlertCircle } from 'lucide-react';
-import { useAuth } from '../context/AuthContext';
+import React, { useState, useEffect } from 'react';
+import { 
+  Package, 
+  Code, 
+  AlertCircle, 
+  Loader2, 
+  Check,
+  X
+} from 'lucide-react';
 import { eventService } from '../services/eventService';
 import { isStatusCancellable } from '../config/eventConfig';
 
 interface Props {
   isOpen: boolean;
   onClose: () => void;
-  onCancelEvent: () => void;
-  eventDescription: string;
-  eventCode: string;
-  eventDate: string;
+  onCancelEvent: (eventId: string, reason: string) => void;
   packageCode?: string;
   packageNumber?: number;
   packages?: Array<{
@@ -18,386 +21,388 @@ interface Props {
     packageNumber: number;
     events: any[];
   }>;
+  lastResult?: {
+    success: boolean;
+    message: string;
+    packageNumber?: number;
+  } | null;
 }
 
 export default function CancelEventModal({
   isOpen,
   onClose,
   onCancelEvent,
-  eventDescription,
-  eventCode,
-  eventDate,
   packageCode,
-  packageNumber,
-  packages = []
+  packageNumber: pkgNumber,
+  packages = [],
+  lastResult
 }: Props) {
-  const didMount = useRef(false);
-  const { userEmail } = useAuth();
   const [reason, setReason] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [showCurl, setShowCurl] = useState(false);
-  const [copied, setCopied] = useState(false);
   const [selectedPackage, setSelectedPackage] = useState<string | null>(null);
-  const [currentStatus, setCurrentStatus] = useState<any | null>(null);
-  const [result, setResult] = useState<{
+  const [currentStatus, setCurrentStatus] = useState<any>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [localResult, setLocalResult] = useState<{
     success: boolean;
     message: string;
     packageNumber?: number;
   } | null>(null);
   const [successfulCancellations, setSuccessfulCancellations] = useState<string[]>([]);
   
-  // Importante: Esto evita reset indeseados del estado interno durante rerenders
-  const initialized = useRef(false);
+  // Estado local para el resultado (solo se usa si no hay lastResult)
   
-  // Reset state only when modal is initially opened (not on every render)
-  useEffect(() => {
-    if (isOpen && !initialized.current) {
-      console.log('🔓 Modal opened, initializing state...', { isOpen });
-      setReason('');
-      setIsSubmitting(false);
-      setShowCurl(false);
-      setCopied(false);
-      setSelectedPackage(null);
-      setCurrentStatus(null);
-      setResult(null);
-      setSuccessfulCancellations([]);
-      initialized.current = true;
-    } else if (!isOpen) {
-      // Solo reseteamos la bandera cuando el modal está cerrado
-      initialized.current = false;
-    }
-  }, [isOpen]);
+  // Resultado efectivo a mostrar (prioriza lastResult sobre localResult)
+  const resultToShow = lastResult || localResult;
 
-  // Debug: Log state changes
+  // Usar el número de paquete para mostrar información contextual
+  const packageNumberToShow = pkgNumber || 1;
+  
+  // Efecto para inicializar el estado cuando se abre el modal
   useEffect(() => {
-    if (didMount.current) {
-      console.log('🔄 Modal State Changed:', {
-        isOpen, 
-        isSubmitting, 
-        selectedPackage, 
-        successfulCancellations: Array.isArray(successfulCancellations) ? successfulCancellations.length : 0, 
-        result: result?.success,
-        initialized: initialized.current
-      });
+    if (isOpen) {
+      console.log('Modal abierto, inicializando estado...');
+      
+      // Si hay un código de paquete específico, seleccionarlo
+      if (packageCode) {
+        setSelectedPackage(packageCode);
+        fetchCurrentStatus(packageCode);
+      } else {
+        setSelectedPackage(null);
+        setCurrentStatus(null);
+      }
     } else {
-      didMount.current = true;
+      // Resetear el estado cuando se cierra el modal
+      resetState();
     }
-  }, [isOpen, isSubmitting, selectedPackage, successfulCancellations, result]);
+  }, [isOpen, packageCode]);
+  
+  // Efecto para actualizar el estado cuando cambia lastResult
+  useEffect(() => {
+    console.log('CancelEventModal - lastResult prop changed:', lastResult);
+    
+    // Si hay un resultado externo, actualizar el estado local
+    if (lastResult && isOpen) {
+      // Actualizar la lista de cancelaciones exitosas si es un éxito
+      if (lastResult.success && selectedPackage) {
+        setSuccessfulCancellations(prev => 
+          prev.includes(selectedPackage) ? prev : [...prev, selectedPackage]
+        );
+      }
+    }
+  }, [lastResult, isOpen, selectedPackage]);
 
-  // Función segura para cerrar el modal
-  const handleCloseModal = () => {
-    console.log('🚪 Closing modal manually...');
-    onClose();
-  };
-
-  // Si el modal no está abierto, no renderizamos nada
-  if (!isOpen) return null;
-
-  // Get cancellable packages
-  const cancellablePackages = packages.map(pkg => {
-    const lastStatus = pkg.events
-      .filter(event => event.type === 'STATUS')
-      .sort((a, b) => new Date(b.event_date).getTime() - new Date(a.event_date).getTime())[0];
-
-    return {
-      ...pkg,
-      lastStatus,
-      isCancellable: lastStatus && isStatusCancellable(lastStatus.code)
-    };
-  }).filter(pkg => pkg.isCancellable);
-
-  const handlePackageSelect = (itemCode: string) => {
-    console.log('📦 Package selected:', itemCode);
-    const pkg = cancellablePackages.find(p => p.itemCode === itemCode);
-    if (pkg) {
-      setSelectedPackage(itemCode);
-      setCurrentStatus({
-        status_id: pkg.lastStatus.description,
-        status_code: pkg.lastStatus.code,
-        status_datetime: pkg.lastStatus.event_date
+  // Función para obtener el estado actual del paquete
+  const fetchCurrentStatus = async (itemCode: string) => {
+    try {
+      console.log('Fetching current status for package:', itemCode);
+      
+      // Intentar obtener el estado actual
+      const response = await eventService.getItemStatus(itemCode);
+      console.log('Status response received:', response);
+      
+      if (response && response.current_status) {
+        const status = response.current_status;
+        console.log('Current status extracted:', status);
+        setCurrentStatus(status);
+      } else {
+        console.error('No current status found in response');
+        setCurrentStatus(null);
+        // Mostrar un mensaje de error al usuario
+        setLocalResult({
+          success: false,
+          message: 'No se pudo obtener el estado actual del bulto. Intente nuevamente más tarde.'
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching current status:', error);
+      setCurrentStatus(null);
+      
+      // Mostrar un mensaje de error más descriptivo al usuario
+      let errorMessage = 'Error al obtener el estado actual del bulto';
+      
+      // Si es un error HTTP, añadir más detalles
+      if (error instanceof Error) {
+        errorMessage += `: ${error.message}`;
+        
+        // Si es un error de red o del servidor, dar un mensaje más específico
+        if (error.message.includes('500')) {
+          errorMessage = 'Error del servidor al obtener el estado. El servidor puede estar temporalmente no disponible.';
+        } else if (error.message.includes('404')) {
+          errorMessage = 'No se encontró información para este bulto. Verifique el código e intente nuevamente.';
+        } else if (error.message.includes('401') || error.message.includes('403')) {
+          errorMessage = 'No tiene permisos para acceder a la información de este bulto.';
+        } else if (error.message.includes('timeout') || error.message.includes('network')) {
+          errorMessage = 'Error de conexión. Verifique su conexión a internet e intente nuevamente.';
+        }
+      }
+      
+      // Establecer el resultado de error
+      setLocalResult({
+        success: false,
+        message: errorMessage,
+        packageNumber: packageNumberToShow
       });
     }
   };
 
+  // Función para manejar el envío del formulario
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('🚀 Submit started...');
-
-    if (!reason.trim() || isSubmitting || !currentStatus || !selectedPackage) {
-      console.log('❌ Submit validation failed:', {
-        hasReason: Boolean(reason.trim()),
-        isSubmitting,
-        hasCurrentStatus: Boolean(currentStatus),
-        hasSelectedPackage: Boolean(selectedPackage)
+    if (!isOpen) return;
+    
+    // Validar que se haya seleccionado un paquete y proporcionado una razón
+    if (!selectedPackage) {
+      setLocalResult({
+        success: false,
+        message: 'Debes seleccionar un bulto para anular su estado'
       });
       return;
     }
     
-    // Double check if status is cancellable
-    if (!isStatusCancellable(currentStatus.status_code)) {
-      console.log('⚠️ Status not cancellable:', currentStatus.status_code);
-      setResult({
+    if (!reason.trim()) {
+      setLocalResult({
         success: false,
-        message: 'Este estado no puede ser anulado'
+        message: 'Debes proporcionar un motivo para la anulación'
       });
       return;
     }
     
     setIsSubmitting(true);
+    setLocalResult(null);
     
     try {
-      console.log('📤 Sending cancellation request:', {
+      // Obtener el estado actual del paquete si no lo tenemos
+      if (!currentStatus) {
+        await fetchCurrentStatus(selectedPackage);
+      }
+      
+      // Verificar si el estado es anulable
+      if (currentStatus) {
+        // Extraer el código de estado correcto para la verificación
+        // El API devuelve status_id que es el nombre completo, pero necesitamos el código
+        const statusCode = currentStatus.status_code || currentStatus.status_id;
+        console.log('Verificando si el estado es anulable:', { 
+          statusId: currentStatus.status_id,
+          statusCode,
+          isCancellable: isStatusCancellable(statusCode)
+        });
+        
+        if (!isStatusCancellable(statusCode)) {
+          setLocalResult({
+            success: false,
+            message: `El estado "${currentStatus.status_id}" no es anulable`
+          });
+          setIsSubmitting(false);
+          return;
+        }
+      }
+      
+      console.log('Sending cancellation request:', {
         selectedPackage,
         currentStatus,
-        reason
+        reason,
+        packageNumber: packageNumberToShow
       });
       
-      const response = await eventService.cancelStatus(
-        selectedPackage,
-        currentStatus.status_datetime,
-        reason,
-        currentStatus.status_id
-      );
-      
-      console.log('📥 Cancellation response received:', response);
-      
-      if (response.success) {
-        console.log('✅ Cancellation successful');
-        const packageInfo = packages.find(p => p.itemCode === selectedPackage);
-        
-        // Importante: Actualizamos el array con una nueva referencia para evitar problemas de renderizado
-        const newSuccessfulCancellations = [...successfulCancellations, selectedPackage];
-        setSuccessfulCancellations(newSuccessfulCancellations);
-        
-        setResult({
-          success: true,
-          message: 'Estado anulado correctamente',
-          packageNumber: packageInfo?.packageNumber
-        });
-        
-        // Clear form for next cancellation
-        setReason('');
-        setSelectedPackage(null);
-        setCurrentStatus(null);
-        
-        // Importante: Notificar al padre pero prevenir que cierre el modal
-        console.log('📣 Notifying parent of cancellation success');
-        onCancelEvent();
-      } else {
-        console.log('❌ Cancellation failed:', response.error);
-        setResult({
-          success: false,
-          message: response.error || 'Error al anular el estado'
-        });
+      // Llamar a la función de anulación
+      if (currentStatus) {
+        onCancelEvent(currentStatus.status_id, reason);
       }
+      
+      // No establecemos el resultado aquí, esperamos a que llegue por props
+      
     } catch (error) {
-      console.error('💥 Error during cancellation:', error);
-      setResult({
+      console.error('Error in handleSubmit:', error);
+      setLocalResult({
         success: false,
-        message: error instanceof Error ? error.message : 'Error al anular el estado'
+        message: error instanceof Error ? error.message : 'Error desconocido',
+        packageNumber: packageNumberToShow
       });
     } finally {
-      console.log('🏁 Cancellation process completed, setting isSubmitting to false');
       setIsSubmitting(false);
     }
   };
 
-  const handleCopyClick = () => {
-    if (!currentStatus || !selectedPackage) return;
-
-    const curlCommand = eventService.generateCurlCommand(
-      selectedPackage,
-      currentStatus.status_datetime,
-      currentStatus.status_id
-    );
-
-    navigator.clipboard.writeText(curlCommand);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+  // Función para resetear el estado
+  const resetState = () => {
+    setReason('');
+    setSelectedPackage(null);
+    setCurrentStatus(null);
+    setIsSubmitting(false);
+    setLocalResult(null);
+    setSuccessfulCancellations([]);
   };
 
+  // Si el modal no está abierto, no renderizar nada
+  if (!isOpen) return null;
+
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg p-6 w-full max-w-md">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-semibold text-gray-900">Anular Estado</h2>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50">
+      <div className="relative w-full max-w-md bg-white rounded-lg shadow-lg overflow-hidden">
+        {/* Cabecera del modal */}
+        <div className="flex items-center justify-between p-4 border-b border-gray-200">
+          <h2 className="text-xl font-semibold">Anular estado</h2>
           <button
-            onClick={handleCloseModal}
-            className="text-gray-500 hover:text-gray-700"
-            disabled={isSubmitting}
             type="button"
+            onClick={onClose}
+            className="text-gray-500 hover:text-gray-700 focus:outline-none"
+            aria-label="Cerrar"
           >
-            <X className="w-5 h-5" />
+            <X size={20} />
           </button>
         </div>
-
-        {/* Mostrar resultados exitosos */}
-        {successfulCancellations.length > 0 && (
-          <div className="mb-4 p-3 bg-green-50 text-green-800 rounded-lg">
-            <div className="flex items-center gap-2 mb-2">
-              <Check className="w-4 h-4" />
-              <span className="font-medium">Estados anulados correctamente:</span>
-            </div>
-            <ul className="space-y-1">
-              {successfulCancellations.map(itemCode => {
-                const pkg = packages.find(p => p.itemCode === itemCode);
-                return (
-                  <li key={itemCode} className="text-sm">
-                    Bulto {pkg?.packageNumber} ({itemCode})
-                  </li>
-                );
-              })}
-            </ul>
-          </div>
-        )}
-
-        {/* Selector de bulto */}
-        {cancellablePackages.length > 0 && (
-          <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Selecciona el bulto a anular
-            </label>
-            <div className="space-y-2">
-              {cancellablePackages.map((pkg) => {
-                const isSelected = selectedPackage === pkg.itemCode;
-                const isAlreadyCancelled = successfulCancellations.includes(pkg.itemCode);
-                
-                if (isAlreadyCancelled) return null;
-
-                return (
-                  <button
-                    key={pkg.itemCode}
-                    type="button"
-                    onClick={() => handlePackageSelect(pkg.itemCode)}
-                    className={`w-full flex items-center gap-3 p-3 rounded-lg border transition-colors
-                      ${isSelected 
-                        ? 'bg-red-50 border-red-200 text-red-900' 
-                        : 'bg-white border-gray-200 text-gray-900 hover:bg-gray-50'}`}
-                  >
-                    <Package className="w-5 h-5" />
-                    <div className="text-left">
-                      <div className="font-medium">Bulto {pkg.packageNumber}</div>
-                      <div className="text-sm text-gray-500">{pkg.lastStatus.description}</div>
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
-        {selectedPackage && currentStatus && (
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="p-3 bg-red-50 rounded-lg space-y-1">
-              <div className="text-sm text-red-800">
-                <span className="font-medium">Estado a anular:</span>{' '}
-                {currentStatus.status_id} ({currentStatus.status_code})
-              </div>
-              <div className="text-sm text-red-800">
-                <span className="font-medium">Fecha:</span>{' '}
-                {new Date(currentStatus.status_datetime).toLocaleString()}
+        
+        {/* Contenido del modal */}
+        <div className="p-6">
+          {/* Mostrar el resultado si existe */}
+          {resultToShow && (
+            <div className={`mb-4 p-3 rounded-md ${resultToShow.success ? 'bg-green-50 text-green-800' : 'bg-red-50 text-red-800'}`}>
+              <div className="flex items-start">
+                {resultToShow.success ? (
+                  <Check size={20} className="mr-2 flex-shrink-0 text-green-600" />
+                ) : (
+                  <AlertCircle size={20} className="mr-2 flex-shrink-0 text-red-600" />
+                )}
+                <div>
+                  <p className="font-medium">
+                    {resultToShow.success ? 'Operación exitosa' : 'Error'}
+                  </p>
+                  <p className="text-sm mt-1">
+                    {resultToShow.message}
+                  </p>
+                </div>
               </div>
             </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Motivo de la anulación
-              </label>
+          )}
+          
+          {/* Formulario de anulación */}
+          <form onSubmit={handleSubmit}>
+            {/* Selector de paquete */}
+            {packages.length > 0 && (
+              <div className="mb-5">
+                <div className="flex items-center mb-2">
+                  <Package size={18} className="mr-2 text-gray-600" />
+                  <label className="block text-sm font-medium text-gray-700">
+                    Estado de los bultos
+                  </label>
+                  <div className="ml-1 text-gray-400">
+                    <AlertCircle size={16} />
+                  </div>
+                </div>
+                <select
+                  value={selectedPackage || ''}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    setSelectedPackage(value);
+                    if (value) {
+                      fetchCurrentStatus(value);
+                    } else {
+                      setCurrentStatus(null);
+                    }
+                  }}
+                  className="w-full p-2 border border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                  disabled={isSubmitting}
+                >
+                  <option value="">Selecciona un bulto</option>
+                  {packages.map((pkg) => (
+                    <option 
+                      key={pkg.itemCode} 
+                      value={pkg.itemCode}
+                      disabled={successfulCancellations.includes(pkg.itemCode)}
+                    >
+                      Bulto {pkg.packageNumber}: {pkg.itemCode}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+            
+            {/* Mostrar el estado actual si está disponible */}
+            {currentStatus && (
+              <div className="mb-5 p-3 bg-gray-50 border border-gray-200 rounded-md">
+                <div className="flex items-center mb-1">
+                  <div className={`mr-2 ${isStatusCancellable(currentStatus.status_code) ? 'text-amber-500' : 'text-red-500'}`}>
+                    {isStatusCancellable(currentStatus.status_code) ? (
+                      <span className="inline-flex items-center px-2 py-1 text-xs font-medium bg-amber-100 text-amber-800 rounded-full">
+                        Anulable
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center px-2 py-1 text-xs font-medium bg-red-100 text-red-800 rounded-full">
+                        No anulable
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <div className="flex items-center text-sm text-gray-700">
+                  <span className="font-medium">Estado actual: </span>
+                  <span className="ml-1">{currentStatus.status_id}</span>
+                </div>
+                <div className="flex items-center text-sm text-gray-700 mt-1">
+                  <span className="font-medium">Código: </span>
+                  <span className="ml-1">{currentStatus.status_code}</span>
+                </div>
+                <div className="flex items-center text-sm text-gray-700 mt-1">
+                  <span className="font-medium">Fecha Estado: </span>
+                  <span className="ml-1">{new Date(currentStatus.status_datetime).toLocaleString()}</span>
+                </div>
+              </div>
+            )}
+            
+            {/* Campo de motivo */}
+            <div className="mb-5">
+              <div className="flex items-center mb-2">
+                <label className="block text-sm font-medium text-gray-700">
+                  Motivo de la anulación <span className="text-red-500">*</span>
+                </label>
+              </div>
               <textarea
                 value={reason}
                 onChange={(e) => setReason(e.target.value)}
-                className="w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-red-500"
+                className="w-full p-2 border border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
                 rows={3}
-                required
-                disabled={isSubmitting}
-                placeholder="Explica el motivo de la anulación..."
+                placeholder="Indica el motivo de la anulación..."
+                disabled={isSubmitting || (currentStatus && !isStatusCancellable(currentStatus.status_code))}
               />
             </div>
-
-            {userEmail && (
-              <div className="p-3 bg-blue-50 rounded-lg">
-                <p className="text-sm text-blue-800">
-                  La anulación se registrará a nombre de:{' '}
-                  <span className="font-medium">{userEmail}</span>
-                </p>
-              </div>
-            )}
-
-            {result && (
-              <div className={`p-3 rounded-lg ${
-                result.success ? 'bg-green-50 text-green-800' : 'bg-red-50 text-red-800'
-              }`}>
-                <div className="flex items-center gap-2">
-                  {result.success ? (
-                    <Check className="w-4 h-4" />
-                  ) : (
-                    <AlertCircle className="w-4 h-4" />
-                  )}
-                  <span>{result.message}</span>
-                </div>
-              </div>
-            )}
-
-            <div>
+            
+            {/* Botón para mostrar comando curl (debug) */}
+            <div className="mb-4">
               <button
                 type="button"
-                onClick={() => setShowCurl(!showCurl)}
-                className="flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900"
-                disabled={isSubmitting}
+                onClick={() => console.log('Debug info')}
+                className="inline-flex items-center text-sm text-gray-500 hover:text-gray-700"
               >
-                <Code className="w-4 h-4" />
-                {showCurl ? 'Ocultar comando curl (debug)' : 'Mostrar comando curl (debug)'}
+                <Code size={16} className="mr-1" />
+                Mostrar comando curl (debug)
               </button>
-              
-              {showCurl && (
-                <div className="mt-2 relative">
-                  <div className="bg-gray-800 text-gray-200 p-3 rounded-md text-xs overflow-x-auto">
-                    <pre className="whitespace-pre-wrap">
-                      {eventService.generateCurlCommand(
-                        selectedPackage,
-                        currentStatus.status_datetime,
-                        currentStatus.status_id
-                      )}
-                    </pre>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={handleCopyClick}
-                    className="absolute top-2 right-2 p-1 bg-gray-700 text-gray-200 rounded hover:bg-gray-600"
-                    title="Copiar al portapapeles"
-                  >
-                    {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                  </button>
-                </div>
-              )}
             </div>
-
-            <div className="flex justify-end gap-2">
+            
+            {/* Botones de acción */}
+            <div className="mt-6 flex justify-end space-x-3">
               <button
                 type="button"
-                onClick={handleCloseModal}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
+                onClick={onClose}
+                className="px-4 py-2 bg-gray-100 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
                 disabled={isSubmitting}
               >
                 Cerrar
               </button>
               <button
                 type="submit"
-                disabled={isSubmitting || !reason.trim()}
-                className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 disabled:opacity-50 flex items-center gap-2"
+                className="px-4 py-2 bg-red-500 rounded-md text-sm font-medium text-white hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 disabled:opacity-50"
+                disabled={isSubmitting || !selectedPackage || !reason.trim() || (currentStatus && !isStatusCancellable(currentStatus.status_code))}
               >
                 {isSubmitting ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    <span>Procesando...</span>
-                  </>
+                  <span className="flex items-center">
+                    <Loader2 className="animate-spin -ml-1 mr-2 h-4 w-4" />
+                    Procesando...
+                  </span>
                 ) : (
-                  <span>Anular Estado</span>
+                  'Confirmar Anulación'
                 )}
               </button>
             </div>
           </form>
-        )}
+        </div>
       </div>
     </div>
   );
