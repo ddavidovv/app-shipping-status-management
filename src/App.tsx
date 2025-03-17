@@ -191,7 +191,11 @@ function App() {
     if (!data.items_history || data.items_history.length === 0) {
       return [];
     }
-    return data.items_history.map((item: any, index: number) => ({
+    // Filtrar solo los elementos que tienen item_code
+    const validItems = data.items_history.filter((item: any) => item.item_code);
+    
+    // Mapear solo los elementos válidos y asignarles un número secuencial
+    return validItems.map((item: any, index: number) => ({
       item_code: item.item_code,
       events: item.events,
       package_number: index + 1
