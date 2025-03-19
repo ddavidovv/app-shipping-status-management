@@ -16,12 +16,14 @@ import { useAuth } from './context/AuthContext';
 import { useShipmentSearch } from './hooks/useShipmentSearch';
 import QuickDeliveryModal from './components/QuickDeliveryModal';
 import { deliveryService } from './services/deliveryService';
+import AssignDeliveryModal from './components/AssignDeliveryModal';
 
 function App() {
   const { isAuthenticated, loading: authLoading, error: authError } = useAuth();
   const [viewMode, setViewMode] = useState<ViewMode>('shipping');
   const [isCreateEventModalOpen, setIsCreateEventModalOpen] = useState(false);
   const [isDeliveryModalOpen, setIsDeliveryModalOpen] = useState(false);
+  const [isAssignDeliveryModalOpen, setIsAssignDeliveryModalOpen] = useState(false);
   const [cancelEventData, setCancelEventData] = useState<{
     event: any;
     isOpen: boolean;
@@ -381,6 +383,8 @@ function App() {
                   data={shipmentData}
                   onRefresh={enhancedHandleSearch}
                   onCancelStatus={handleCancelStatus}
+                  onOpenDeliveryModal={() => setIsDeliveryModalOpen(true)}
+                  onOpenAssignDeliveryModal={() => setIsAssignDeliveryModalOpen(true)}
                 />
                 
                 <ViewModeSelector
@@ -425,6 +429,15 @@ function App() {
               shippingCode={shipmentData.shipping_code}
               isPudoAllowed={deliveryService.isPudoDeliveryAllowed(shipmentData)}
               pudoInfo={shipmentData.additionals?.find(a => a.additionalCode === 'PER')}
+              currentStatus={shipmentData.shipping_status_code}
+              shipmentData={shipmentData}
+            />
+
+            <AssignDeliveryModal
+              isOpen={isAssignDeliveryModalOpen}
+              onClose={() => setIsAssignDeliveryModalOpen(false)}
+              onAssign={enhancedHandleSearch}
+              shippingCode={shipmentData.shipping_code}
               currentStatus={shipmentData.shipping_status_code}
               shipmentData={shipmentData}
             />

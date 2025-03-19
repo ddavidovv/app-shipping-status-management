@@ -1,24 +1,28 @@
 import React, { useState } from 'react';
-import { MapPin, User, Package, ChevronDown, ChevronRight, RefreshCw, CheckCircle2, Home, Box, Building, XCircle } from 'lucide-react';
+import { MapPin, User, Package, ChevronDown, ChevronRight, RefreshCw, CheckCircle2, Home, Box, Building, XCircle, Truck } from 'lucide-react';
 import { ShippingData } from '../types';
 import { deliveryService } from '../services/deliveryService';
 import QuickDeliveryModal from './QuickDeliveryModal';
 import PudoInfoModal from './PudoInfoModal';
 import { isStatusCancellable } from '../config/eventConfig';
+import { assignDeliveryService } from '../services/assignDeliveryService';
 
 interface Props {
   data: ShippingData;
   onRefresh: () => void;
   onCancelStatus?: (status: any, packageCode?: string, packageNumber?: number) => void;
+  onOpenDeliveryModal?: () => void;
+  onOpenAssignDeliveryModal?: () => void;
 }
 
-export default function ShipmentDetails({ data, onRefresh, onCancelStatus }: Props) {
+export default function ShipmentDetails({ data, onRefresh, onCancelStatus, onOpenDeliveryModal, onOpenAssignDeliveryModal }: Props) {
   const [isExpanded, setIsExpanded] = useState(true);
   const [isQuickDeliveryOpen, setIsQuickDeliveryOpen] = useState(false);
   const [isPudoInfoOpen, setIsPudoInfoOpen] = useState(false);
 
   const isDelivered = deliveryService.isDelivered(data);
   const isPudoAllowed = deliveryService.isPudoDeliveryAllowed(data);
+  const isAssignmentAllowed = assignDeliveryService.isAssignmentAllowed(data);
 
   const formatAddress = (address: string, address2: string, postalCode: string, town: string, countryCode: string) => {
     return `${address}, ${postalCode} ${town} (${countryCode})${address2 ? ` - ${address2}` : ''}`;
@@ -116,13 +120,29 @@ export default function ShipmentDetails({ data, onRefresh, onCancelStatus }: Pro
               <button
                 onClick={(e) => {
                   e.stopPropagation();
-                  setIsQuickDeliveryOpen(true);
+                  if (onOpenDeliveryModal) {
+                    onOpenDeliveryModal();
+                  } else {
+                    setIsQuickDeliveryOpen(true);
+                  }
                 }}
                 className="flex items-center gap-1 px-2 py-1 text-sm bg-green-600 text-white rounded hover:bg-green-700"
               >
                 <CheckCircle2 className="w-3 h-3" />
                 Entregar
               </button>
+              {isAssignmentAllowed && onOpenAssignDeliveryModal && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onOpenAssignDeliveryModal();
+                  }}
+                  className="flex items-center gap-1 px-2 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700"
+                >
+                  <Truck className="w-3 h-3" />
+                  Asignar a Reparto
+                </button>
+              )}
               {hasCancellableStatus && onCancelStatus && (
                 <button
                   onClick={handleAnularEstadoClick}
