@@ -9,6 +9,7 @@ export const STATUS_CODES = {
   '1600': 'Reparto Fallido',
   '2100': 'Entregado',
   '2300': 'Depositado en PUDO',
+  '2400': 'Nuevo reparto',
   '3000': 'Anulado',
 } as const;
 
@@ -35,6 +36,7 @@ export const STATUS_ACTIONS = {
     '2300', // Depositado en PUDO
     '1500', // En reparto
     '1600', // Reparto Fallido
+    '2400', // Nuevo reparto
     '3000', // Anulado
   ] as StatusCode[],
 };
