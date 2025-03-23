@@ -1,11 +1,5 @@
 import { ShippingData } from '../types';
-
-// Estados que permiten asignar a reparto
-export const ASSIGNABLE_STATUS_CODES = [
-  '1200', // Delegación destino
-  '0900', // En tránsito
-  '1600', // Nuevo Reparto
-];
+import { isStatusAssignable } from '../config/shippingStatusConfig';
 
 export const assignDeliveryService = {
   async assignToDelivery(
@@ -78,6 +72,6 @@ export const assignDeliveryService = {
   },
 
   isAssignmentAllowed(data: ShippingData): boolean {
-    return ASSIGNABLE_STATUS_CODES.includes(data.shipping_status_code);
+    return isStatusAssignable(data.shipping_status_code);
   }
 };

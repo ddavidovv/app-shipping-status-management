@@ -414,11 +414,13 @@ function App() {
               onCancelEvent={submitCancelEvent}
               packageCode={cancelEventData.packageCode}
               packageNumber={cancelEventData.packageNumber}
-              packages={shipmentData.items_history.map((item, index) => ({
-                itemCode: item.item_code,
-                packageNumber: index + 1,
-                events: item.events
-              }))}
+              packages={shipmentData.items_history
+                .filter(item => item.item_code)
+                .map((item, index) => ({
+                  itemCode: item.item_code,
+                  packageNumber: index + 1,
+                  events: item.events
+                }))}
               lastResult={cancelEventData.result}
             />
 

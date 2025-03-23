@@ -1,19 +1,8 @@
-import { StatusCode, EventType } from '../types';
-import { Package, Truck, Mail, CheckCircle2, Box, CircleDot } from 'lucide-react';
+import { CheckCircle2, Box, CircleDot, Mail } from 'lucide-react';
+import { isStatusCancellable } from './shippingStatusConfig';
 
-// Estados que pueden ser anulados
-export const CANCELLABLE_STATUS_CODES: StatusCode[] = [
-  '2100', // Entregado
-  '2300', // Depositado en PUDO
-  '1500', // En reparto
-  '1600', // Reparto Fallido
-  '3000', // Anulado
-];
-
-// Función helper para verificar si un estado es anulable
-export const isStatusCancellable = (statusCode: StatusCode): boolean => {
-  return CANCELLABLE_STATUS_CODES.includes(statusCode);
-};
+// Exportar la función isStatusCancellable desde la configuración centralizada
+export { isStatusCancellable };
 
 // Mapeo de tipos de eventos a sus iconos
 export const EVENT_TYPE_ICONS = {

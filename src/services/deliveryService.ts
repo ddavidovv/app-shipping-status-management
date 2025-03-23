@@ -1,4 +1,5 @@
 import { ShippingData } from '../types';
+import { isStatusDeliverable } from '../config/shippingStatusConfig';
 
 interface SigneeInfo {
   name: string;
@@ -10,14 +11,6 @@ interface DeliveryResponse {
   success: boolean;
   error?: string;
 }
-
-// Estados que permiten realizar una entrega
-const DELIVERABLE_STATUS_CODES = [
-  '1500', // En reparto
-  '1600', // Reparto fallido
-  '1200', // Delegación destino
-  '0900', // En tránsito
-];
 
 export const deliveryService = {
   async deliverShipment(
@@ -125,6 +118,6 @@ export const deliveryService = {
   },
 
   isDeliveryAllowed(data: ShippingData): boolean {
-    return DELIVERABLE_STATUS_CODES.includes(data.shipping_status_code);
+    return isStatusDeliverable(data.shipping_status_code);
   }
 };
