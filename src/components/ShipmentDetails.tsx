@@ -115,6 +115,7 @@ export default function ShipmentDetails({ data, onRefresh, onCancelStatus, onOpe
             <RefreshCw className="w-3 h-3" />
             Actualizar
           </button>
+          {/* Mostrar botones de acción si no está entregado */}
           {!isDelivered && (
             <>
               <button
@@ -143,16 +144,17 @@ export default function ShipmentDetails({ data, onRefresh, onCancelStatus, onOpe
                   Asignar a Reparto
                 </button>
               )}
-              {hasCancellableStatus && onCancelStatus && (
-                <button
-                  onClick={handleAnularEstadoClick}
-                  className="flex items-center gap-1 px-2 py-1 text-sm bg-red-600 text-white rounded hover:bg-red-700"
-                >
-                  <XCircle className="w-3 h-3" />
-                  Anular Estado
-                </button>
-              )}
             </>
+          )}
+          {/* Mostrar botón de Anular Estado siempre que haya un estado cancelable, independientemente de si está entregado */}
+          {hasCancellableStatus && onCancelStatus && (
+            <button
+              onClick={handleAnularEstadoClick}
+              className="flex items-center gap-1 px-2 py-1 text-sm bg-red-600 text-white rounded hover:bg-red-700"
+            >
+              <XCircle className="w-3 h-3" />
+              Anular Estado
+            </button>
           )}
           {isExpanded ? (
             <ChevronDown className="w-4 h-4 text-gray-400" />
