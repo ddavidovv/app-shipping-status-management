@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { X, Loader2, Package, MapPin, Code, Copy, Check, Clock, AlertCircle, Info, Box } from 'lucide-react';
 import { deliveryService } from '../services/deliveryService';
-import { StatusCode, ShippingData } from '../types';
+import { ShippingData } from '../types';
+import { isStatusDeliverable, STATUS_CODES, STATUS_ACTIONS } from '../config/shippingStatusConfig';
 
 interface Props {
   isOpen: boolean;
@@ -13,7 +14,6 @@ interface Props {
     providerCode: string;
     organicPointCode: string;
   } | null;
-  currentStatus: StatusCode;
   shipmentData: ShippingData;
 }
 
@@ -30,13 +30,6 @@ const QUICK_TIME_OPTIONS: QuickTimeOption[] = [
   { label: 'Hace 4 horas', value: 240 },
 ];
 
-const ALLOWED_STATUS_CODES = {
-  '1500': 'En reparto',
-  '1600': 'Reparto fallido',
-  '1200': 'Delegación destino',
-  '0900': 'En tránsito'
-} as const;
-
 export default function QuickDeliveryModal({
   isOpen,
   onClose,
@@ -44,7 +37,6 @@ export default function QuickDeliveryModal({
   shippingCode,
   isPudoAllowed,
   pudoInfo,
-  currentStatus,
   shipmentData
 }: Props) {
   // Use ref to avoid state resets during rerenders
@@ -101,7 +93,7 @@ export default function QuickDeliveryModal({
     const lastStatus = item.events
       .filter(event => event.type === 'STATUS')
       .sort((a, b) => new Date(b.event_date).getTime() - new Date(a.event_date).getTime())[0];
-    return lastStatus && lastStatus.code in ALLOWED_STATUS_CODES;
+    return lastStatus && isStatusDeliverable(lastStatus.code);
   });
 
   // Get last status for each package
@@ -113,7 +105,7 @@ export default function QuickDeliveryModal({
       itemCode: item.item_code,
       status: lastStatus?.description || 'Sin estado',
       statusCode: lastStatus?.code || '',
-      allowsDelivery: lastStatus?.code in ALLOWED_STATUS_CODES
+      allowsDelivery: lastStatus?.code && isStatusDeliverable(lastStatus.code)
     };
   });
 
@@ -261,8 +253,8 @@ export default function QuickDeliveryModal({
                     <div className="absolute left-1/2 bottom-full mb-2 -translate-x-1/2 w-48 p-2 bg-gray-800 text-white text-xs rounded shadow-lg z-50">
                       <p className="font-medium mb-1">Estados que permiten entrega:</p>
                       <ul className="space-y-0.5">
-                        {Object.entries(ALLOWED_STATUS_CODES).map(([code, name]) => (
-                          <li key={code}>{name} ({code})</li>
+                        {STATUS_ACTIONS.DELIVERABLE_STATUS_CODES.map((code) => (
+                          <li key={code}>{STATUS_CODES[code as keyof typeof STATUS_CODES] || code} ({code})</li>
                         ))}
                       </ul>
                       <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 translate-y-1/2 rotate-45 w-2 h-2 bg-gray-800"></div>

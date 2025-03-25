@@ -64,11 +64,17 @@ export const isStatusAssignable = (statusCode: StatusCode): boolean => {
 };
 
 export const isStatusDeliverable = (statusCode: StatusCode): boolean => {
-  return STATUS_ACTIONS.DELIVERABLE_STATUS_CODES.includes(statusCode);
+  const normalizedStatusCode = String(statusCode).trim();
+  console.log('isStatusDeliverable - status code:', normalizedStatusCode);
+  console.log('isStatusDeliverable - deliverable status codes:', STATUS_ACTIONS.DELIVERABLE_STATUS_CODES);
+  return STATUS_ACTIONS.DELIVERABLE_STATUS_CODES.includes(normalizedStatusCode as StatusCode);
 };
 
 export const isStatusCancellable = (statusCode: StatusCode): boolean => {
-  return STATUS_ACTIONS.CANCELLABLE_STATUS_CODES.includes(statusCode);
+  const normalizedStatusCode = String(statusCode).trim();
+  console.log('isStatusCancellable - status code:', normalizedStatusCode);
+  console.log('isStatusCancellable - cancellable status codes:', STATUS_ACTIONS.CANCELLABLE_STATUS_CODES);
+  return STATUS_ACTIONS.CANCELLABLE_STATUS_CODES.includes(normalizedStatusCode as StatusCode);
 };
 
 // Función para obtener la descripción de un código de estado
