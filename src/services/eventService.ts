@@ -99,7 +99,8 @@ export const eventService = {
         event_datetime: itemStatus.current_status.status_datetime,
         status_id: itemStatus.current_status.status_id,
         user_id: userEmail,
-        reason: reason // Añadimos el motivo de la cancelación
+        reason: reason, // Añadimos el motivo de la cancelación
+        comments: reason // Incluimos los comentarios del usuario (mismo valor que reason)
       };
 
       console.log('📤 Sending cancellation request with params:', {
@@ -166,7 +167,8 @@ export const eventService = {
       event_datetime: eventDateTime,
       status_id: statusDescription,
       user_id: userEmail,
-      reason: "Motivo de cancelación" // Agregamos un motivo por defecto para el curl
+      reason: "Motivo de cancelación", // Agregamos un motivo por defecto para el curl
+      comments: "Motivo de cancelación" // Incluimos los comentarios del usuario (mismo valor que reason)
     };
 
     // Generar el comando curl
