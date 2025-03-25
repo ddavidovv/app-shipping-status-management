@@ -27,6 +27,7 @@ export const STATUS_ACTIONS = {
     '1500', // En reparto
     '1600', // Reparto fallido
     '1200', // Delegación destino
+    '2400', //Nuevo reparto
     '0900', // En tránsito
   ] as StatusCode[],
 
