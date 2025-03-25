@@ -19,16 +19,21 @@ export const STATUS_ACTIONS = {
   ASSIGNABLE_STATUS_CODES: [
     '1200', // Delegación destino
     '0900', // En tránsito
-    '1600', // Nuevo Reparto
+    '1600', // Reparto fallido
+    '2400', //Nuevo reparto
+    '1700', // Estacionado
+    '0900', // En tránsito
   ] as StatusCode[],
 
   // Estados que permiten realizar una entrega
   DELIVERABLE_STATUS_CODES: [
     '1500', // En reparto
     '1600', // Reparto fallido
+    '1700', // Estacionado
     '1200', // Delegación destino
     '2400', //Nuevo reparto
     '0900', // En tránsito
+    '2900', // Recogerán en Delegación
   ] as StatusCode[],
 
   // Estados que pueden ser anulados
@@ -37,6 +42,7 @@ export const STATUS_ACTIONS = {
     '2300', // Depositado en PUDO
     '1500', // En reparto
     '1600', // Reparto Fallido
+    '1700', // Estacionado
     '2400', // Nuevo reparto
     '3000', // Anulado
   ] as StatusCode[],
