@@ -50,7 +50,17 @@ export const STATUS_ACTIONS = {
 
 // Funciones helper para verificar si un estado permite una acción específica
 export const isStatusAssignable = (statusCode: StatusCode): boolean => {
-  return STATUS_ACTIONS.ASSIGNABLE_STATUS_CODES.includes(statusCode);
+  console.log('Verificando si el estado es asignable:', statusCode);
+  console.log('Lista de estados asignables:', STATUS_ACTIONS.ASSIGNABLE_STATUS_CODES);
+  
+  // Normalizar el código de estado (eliminar espacios y convertir a string)
+  const normalizedStatusCode = String(statusCode).trim();
+  
+  // Verificar si el código normalizado está en la lista
+  const isIncluded = STATUS_ACTIONS.ASSIGNABLE_STATUS_CODES.includes(normalizedStatusCode as StatusCode);
+  console.log('¿Incluido en la lista?', isIncluded);
+  
+  return isIncluded;
 };
 
 export const isStatusDeliverable = (statusCode: StatusCode): boolean => {

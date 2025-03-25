@@ -72,6 +72,8 @@ export const assignDeliveryService = {
   },
 
   isAssignmentAllowed(data: ShippingData): boolean {
+    console.log('Estado actual del envío:', data.shipping_status_code);
+    console.log('¿Está en la lista de estados asignables?', isStatusAssignable(data.shipping_status_code));
     return isStatusAssignable(data.shipping_status_code);
   }
 };
