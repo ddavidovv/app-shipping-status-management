@@ -1,14 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { X, Loader2, Package, Code, Copy, Check, Clock, AlertCircle, Info, Box, Truck } from 'lucide-react';
+import { X, Loader2, Code, Copy, Check, Clock, AlertCircle, Info, Box, Truck } from 'lucide-react';
 import { assignDeliveryService } from '../services/assignDeliveryService';
-import { StatusCode, ShippingData } from '../types';
+import { ShippingData } from '../types';
+import { STATUS_ACTIONS, STATUS_CODES } from '../config/shippingStatusConfig';
 
 interface Props {
   isOpen: boolean;
   onClose: () => void;
   onAssign: () => void;
   shippingCode: string;
-  currentStatus: StatusCode;
   shipmentData: ShippingData;
 }
 
@@ -25,18 +25,11 @@ const QUICK_TIME_OPTIONS: QuickTimeOption[] = [
   { label: 'Hace 4 horas', value: 240 },
 ];
 
-const ALLOWED_STATUS_CODES = {
-  '1200': 'Delegación destino',
-  '0900': 'En tránsito',
-  '1600': 'Nuevo Reparto',
-} as const;
-
 export default function AssignDeliveryModal({
   isOpen,
   onClose,
   onAssign,
   shippingCode,
-  currentStatus,
   shipmentData
 }: Props) {
   // Use ref to avoid state resets during rerenders
@@ -214,8 +207,8 @@ export default function AssignDeliveryModal({
                   <div className="absolute left-1/2 bottom-full mb-2 -translate-x-1/2 w-48 p-2 bg-gray-800 text-white text-xs rounded shadow-lg z-50">
                     <p className="font-medium mb-1">Estados que permiten asignar a reparto:</p>
                     <ul className="space-y-0.5">
-                      {Object.entries(ALLOWED_STATUS_CODES).map(([code, name]) => (
-                        <li key={code}>{name} ({code})</li>
+                      {STATUS_ACTIONS.ASSIGNABLE_STATUS_CODES.map((code) => (
+                        <li key={code}>{STATUS_CODES[code as keyof typeof STATUS_CODES] || code} ({code})</li>
                       ))}
                     </ul>
                     <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 translate-y-1/2 rotate-45 w-2 h-2 bg-gray-800"></div>
@@ -226,7 +219,7 @@ export default function AssignDeliveryModal({
             <div className="flex items-center gap-2">
               <span className="font-medium">Estado:</span>
               <span className={isAssignmentAllowed ? 'text-green-600' : 'text-gray-600'}>
-                {shipmentData.shipping_status_description}
+                {STATUS_CODES[shipmentData.shipping_status_code as keyof typeof STATUS_CODES] || 'Estado desconocido'}
               </span>
               <span className="text-xs text-gray-400">({shipmentData.shipping_status_code})</span>
               {isAssignmentAllowed ? (
