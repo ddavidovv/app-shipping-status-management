@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { X, FileSpreadsheet, Check, ChevronDown, ChevronRight } from 'lucide-react';
 import { ShippingData } from '../types';
 import * as XLSX from 'xlsx';
@@ -20,9 +20,11 @@ const FIELD_GROUPS: FieldGroup[] = [
     fields: [
       { key: 'shipping_code', label: 'Código de envío', group: 'Información básica' },
       { key: 'shipping_status_code', label: 'Estado', group: 'Información básica' },
+      { key: 'shipping_type_code', label: 'Tipo de envío', group: 'Información básica' },
       { key: 'item_count', label: 'Número de bultos', group: 'Información básica' },
       { key: 'declared_weight', label: 'Peso declarado', group: 'Información básica' },
       { key: 'final_weight', label: 'Peso final', group: 'Información básica' },
+      { key: 'hasReimbursement', label: 'Reembolso', group: 'Información básica' },
     ]
   },
   {
@@ -145,6 +147,8 @@ export default function ExportModal({ isOpen, onClose, results }: Props) {
               .filter(event => event.type === 'STATUS')
               .sort((a, b) => new Date(b.event_date).getTime() - new Date(a.event_date).getTime())[0];
             row[fieldKey] = lastStatus?.event_date || '';
+          } else if (fieldKey === 'hasReimbursement') {
+            row[fieldKey] = data.hasReimbursement ? 'Sí' : 'No';
           } else {
             row[fieldKey] = data[fieldKey as keyof ShippingData] || '';
           }

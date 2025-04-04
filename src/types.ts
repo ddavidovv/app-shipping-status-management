@@ -1,10 +1,11 @@
-import { DivideIcon as LucideIcon } from 'lucide-react';
+// Removed unused import
 
 export type EventType = 
   | 'EVENT'
   | 'SHIPPING_ITEM_EVENT_V1'
   | 'STATUS'
-  | 'NOTIFICATION_V1';
+  | 'NOTIFICATION_V1'
+  | 'MANAGEMENTS';
 
 export type StatusCode = 
   | '1500' // En reparto
@@ -178,6 +179,7 @@ export interface ShippingData {
   shipping_type_code?: string;
   client_center_code?: string;
   traffic_type_code?: string;
+  hasReimbursement?: boolean;
   
   // Campos adicionales de dirección
   origin_country_code: string;
@@ -192,4 +194,4 @@ export interface ShippingData {
   destin_town_name: string;
 }
 
-export type ViewMode = 'shipping' | 'packages' | 'comparison';
+export type ViewMode = 'shipping' | 'packages' | 'comparison' | 'packageStatus';

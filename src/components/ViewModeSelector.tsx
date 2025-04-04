@@ -1,5 +1,5 @@
 import { ViewMode } from '../types';
-import { Package, Boxes, GitCompare } from 'lucide-react';
+import { Package, Boxes, GitCompare, Activity } from 'lucide-react';
 
 interface Props {
   viewMode: ViewMode;
@@ -18,7 +18,7 @@ export default function ViewModeSelector({ viewMode, onViewModeChange, packagesC
             : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'}`}
       >
         <Package className="w-4 h-4" />
-        <span>Vista de Envío</span>
+        <span>Bitácora</span>
       </button>
       
       <button
@@ -30,6 +30,17 @@ export default function ViewModeSelector({ viewMode, onViewModeChange, packagesC
       >
         <Boxes className="w-4 h-4" />
         <span>Bultos ({packagesCount})</span>
+      </button>
+
+      <button
+        onClick={() => onViewModeChange('packageStatus')}
+        className={`flex items-center gap-2 px-4 py-2 rounded-lg border transition-colors text-sm
+          ${viewMode === 'packageStatus'
+            ? 'bg-corporate-primary text-white border-corporate-primary'
+            : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'}`}
+      >
+        <Activity className="w-4 h-4" />
+        <span>Estado de Bultos</span>
       </button>
 
       {packagesCount > 1 && (

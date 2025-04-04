@@ -31,7 +31,8 @@ export const STATUS_ACTIONS = {
     '1600', // Reparto fallido
     '1700', // Estacionado
     '1200', // Delegación destino
-    '2400', //Nuevo reparto
+    '2300', // Depositado en PUDO
+    '2400', // Nuevo reparto
     '0900', // En tránsito
     '2900', // Recogerán en Delegación
   ] as StatusCode[],
@@ -41,6 +42,7 @@ export const STATUS_ACTIONS = {
     '2100', // Entregado
     '2300', // Depositado en PUDO
     '1500', // En reparto
+    '1200', // Delegación destino
     '1600', // Reparto Fallido
     '1700', // Estacionado
     '2400', // Nuevo reparto

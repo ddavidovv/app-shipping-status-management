@@ -9,6 +9,7 @@ import CancelEventModal from './components/CancelEventModal';
 import ViewModeSelector from './components/ViewModeSelector';
 import PackagesList from './components/PackagesList';
 import PackagesComparison from './components/PackagesComparison';
+import PackageStatusView from './components/PackageStatusView';
 import BulkSearchResults from './components/BulkSearchResults';
 import SearchBar from './components/SearchBar';
 import { eventService } from './services/eventService';
@@ -338,6 +339,12 @@ function App() {
           <PackagesComparison
             packages={packages}
             onCancelStatus={handleCancelStatus}
+          />
+        );
+      case 'packageStatus':
+        return (
+          <PackageStatusView
+            packages={packages}
           />
         );
       default:

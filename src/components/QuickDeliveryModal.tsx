@@ -14,6 +14,7 @@ interface Props {
     providerCode: string;
     organicPointCode: string;
   } | null;
+  currentStatus?: string;
   shipmentData: ShippingData;
 }
 
@@ -37,6 +38,7 @@ export default function QuickDeliveryModal({
   shippingCode,
   isPudoAllowed,
   pudoInfo,
+  currentStatus,
   shipmentData
 }: Props) {
   // Use ref to avoid state resets during rerenders

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { MapPin, User, Package, ChevronDown, ChevronRight, RefreshCw, CheckCircle2, Home, Box, Building, XCircle, Truck } from 'lucide-react';
+import { MapPin, User, Package, ChevronDown, ChevronRight, RefreshCw, CheckCircle2, Home, Box, Building, XCircle, Truck, DollarSign } from 'lucide-react';
 import { ShippingData } from '../types';
 import { deliveryService } from '../services/deliveryService';
 import QuickDeliveryModal from './QuickDeliveryModal';
@@ -86,6 +86,13 @@ export default function ShipmentDetails({ data, onRefresh, onCancelStatus, onOpe
             <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-green-100 text-green-800 text-sm font-medium rounded-full">
               <CheckCircle2 className="w-3 h-3" />
               Entregado
+            </span>
+          )}
+
+          {data.hasReimbursement && (
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-yellow-100 text-yellow-800 text-sm font-medium rounded-full">
+              <DollarSign className="w-3 h-3" />
+              Reembolso
             </span>
           )}
 

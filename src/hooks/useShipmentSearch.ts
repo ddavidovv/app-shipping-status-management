@@ -86,6 +86,15 @@ export function useShipmentSearch(): UseShipmentSearchResult {
       throw new Error('Estructura de datos de envío inválida');
     }
 
+    // Verificar si el envío tiene reembolso (additionalCode = 'REE')
+    const hasReimbursement = Array.isArray(rawData.additionals) && 
+      rawData.additionals.some((additional: any) => additional.additionalCode === 'REE');
+    
+    console.log('💰 Verificación de reembolso:', {
+      hasReimbursement,
+      additionals: rawData.additionals
+    });
+
     // Procesar y validar los datos
     const processedData: ShippingData = {
       ...rawData,
@@ -113,14 +122,16 @@ export function useShipmentSearch(): UseShipmentSearchResult {
       destin_address: rawData.destin_address || '',
       destin_address2: rawData.destin_address2 || '',
       destin_town_name: rawData.destin_town_name || '',
-      traffic_type_code: rawData.traffic_type_code || ''
+      traffic_type_code: rawData.traffic_type_code || '',
+      hasReimbursement: hasReimbursement
     };
 
     console.log('✅ Datos procesados:', {
       shipping_code: processedData.shipping_code,
       event_count: processedData.shipping_history.events.length,
       first_event: processedData.shipping_history.events[0]?.code,
-      traffic_type: processedData.traffic_type_code
+      traffic_type: processedData.traffic_type_code,
+      hasReimbursement: processedData.hasReimbursement
     });
 
     return processedData;
