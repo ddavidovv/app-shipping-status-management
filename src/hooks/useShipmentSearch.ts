@@ -23,6 +23,7 @@ interface UseShipmentSearchResult {
   handleKeyPress: (e: React.KeyboardEvent<HTMLTextAreaElement>) => void;
   handleBulkSelect: (tracking: string) => void;
   setIsExpanded: (value: boolean) => void;
+  clearAllResults: () => void; // Método para limpiar todos los resultados
 }
 
 export function useShipmentSearch(): UseShipmentSearchResult {
@@ -186,14 +187,56 @@ export function useShipmentSearch(): UseShipmentSearchResult {
     return processShipmentData(result.data);
   };
 
+  /**
+   * Limpia completamente todos los estados y resultados de búsqueda
+   * Este método debe ser llamado directamente para hacer una limpieza total
+   */
+  const clearAllResults = () => {
+    console.log('🧹 clearAllResults: Limpiando TODOS los resultados y estados');
+    
+    // Usar un Promise.all para garantizar que todos los estados se actualicen
+    // antes de continuar con cualquier otra operación
+    Promise.all([
+      // Limpiar todos los estados relacionados con la búsqueda
+      new Promise<void>(resolve => {
+        setBulkSearchError(null);
+        resolve();
+      }),
+      new Promise<void>(resolve => {
+        setError('');
+        resolve();
+      }),
+      new Promise<void>(resolve => {
+        setShipmentData(null);
+        resolve();
+      }),
+      new Promise<void>(resolve => {
+        setBulkResults([]);
+        resolve();
+      }),
+      new Promise<void>(resolve => {
+        setSelectedTracking(null);
+        resolve();
+      })
+    ]).then(() => {
+      console.log('🧹 clearAllResults: Limpieza completada.');
+    });
+  };
+
   const handleSearch = async () => {
-    if (!trackingNumber.trim()) return;
+    console.log('🔍 handleSearch: INICIO - trackingNumber:', trackingNumber, 'length:', trackingNumber.length);
+    
+    // Si no hay término de búsqueda, simplemente limpiamos y retornamos
+    if (!trackingNumber.trim()) {
+      console.log('🧹 No hay término de búsqueda, limpiando resultados...');
+      clearAllResults();
+      return;
+    }
+    
+    // Limpiar siempre los datos anteriores al hacer una búsqueda
+    clearAllResults();
     
     console.log('🔍 Iniciando búsqueda con:', trackingNumber);
-    
-    setBulkSearchError(null);
-    setError('');
-    setShipmentData(null); // Limpiar datos anteriores
 
     const trackingNumbers = trackingNumber
       .split(/[\n,\t]+/)
@@ -295,6 +338,7 @@ export function useShipmentSearch(): UseShipmentSearchResult {
     handleSearch,
     handleKeyPress,
     handleBulkSelect,
-    setIsExpanded
+    setIsExpanded,
+    clearAllResults  // Exponemos la función de limpieza para usarla directamente
   };
 }

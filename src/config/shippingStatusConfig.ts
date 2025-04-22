@@ -3,13 +3,23 @@ import { CheckCircle2, Box, CircleDot, Mail } from 'lucide-react';
 
 // Definición de todos los códigos de estado con sus descripciones
 export const STATUS_CODES = {
+  '0701': 'Mercancía no enlazada en Origen',
   '0900': 'En tránsito',
+  '1001': 'Mercancía no enlaza en Cruce',
+  '1100': 'Llegada por Error a Delegación',
   '1200': 'Delegación destino',
   '1500': 'En reparto',
   '1600': 'Reparto Fallido',
+  '1700': 'Envío Estacionado',
+  '1800': 'Estacionado Ubicado',
+  '1900': 'Pendiente de Extracción',
   '2100': 'Entregado',
+  '2200': 'Entregado Parcial',
   '2300': 'Depositado en PUDO',
+  '2310': 'Disponible en PUDO',
   '2400': 'Nuevo reparto',
+  '2500': 'Devolución',
+  '2700': 'Almacén Regulador',
   '3000': 'Anulado',
 } as const;
 
@@ -46,6 +56,7 @@ export const STATUS_ACTIONS = {
     '1600', // Reparto Fallido
     '1700', // Estacionado
     '2400', // Nuevo reparto
+    '2500', // Devolución
     '3000', // Anulado
   ] as StatusCode[],
 };

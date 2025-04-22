@@ -82,7 +82,8 @@ function App() {
     handleSearch,
     handleKeyPress,
     handleBulkSelect,
-    setIsExpanded
+    setIsExpanded,
+    clearAllResults  // Extraemos el método de limpieza
   } = useShipmentSearch();
 
   // Función personalizada para resetear el estado de la aplicación
@@ -99,14 +100,17 @@ function App() {
     // Resetear otras variables de estado si es necesario
   }, []);
 
-  // Sobrescribir el handleSearch del hook para incluir el reseteo
-  const originalHandleSearch = handleSearch;
+  // Función mejorada que combina resetAppState y handleSearch
+  // IMPORTANTE: No usamos originalHandleSearch porque causa problemas con las referencias
   const enhancedHandleSearch = useCallback(async () => {
+    console.log('🔄 App.tsx - enhancedHandleSearch: INICIO');
     // Resetear el estado antes de realizar la búsqueda
     resetAppState();
-    // Llamar a la función original de búsqueda
-    return await originalHandleSearch();
-  }, [originalHandleSearch, resetAppState]);
+    // Llamar directamente a la función handleSearch del hook
+    // Esto asegura que siempre usamos la versión más actualizada
+    console.log('🔄 App.tsx - enhancedHandleSearch: Llamando a handleSearch');
+    return await handleSearch();
+  }, [resetAppState, handleSearch]);
 
   const handleClose = () => {
     try {
@@ -370,6 +374,7 @@ function App() {
           setIsExpanded={setIsExpanded}
           loading={loading}
           error={error || bulkSearchError}
+          clearResults={clearAllResults}  // Pasamos el método de limpieza directa
         />
 
         <div className="flex-1 flex gap-4 min-h-0">

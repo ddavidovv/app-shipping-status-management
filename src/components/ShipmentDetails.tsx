@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { MapPin, User, Package, ChevronDown, ChevronRight, RefreshCw, CheckCircle2, Home, Box, Building, XCircle, Truck, DollarSign } from 'lucide-react';
+import { MapPin, User, Package, ChevronDown, ChevronRight, RefreshCw, CheckCircle2, Home, Box, Building, XCircle, Truck, DollarSign, RefreshCw as ForceIcon } from 'lucide-react';
 import { ShippingData } from '../types';
 import { deliveryService } from '../services/deliveryService';
 import QuickDeliveryModal from './QuickDeliveryModal';
 import PudoInfoModal from './PudoInfoModal';
+import ForceStatusModal from './ForceStatusModal';
 import { isStatusCancellable } from '../config/eventConfig';
 import { assignDeliveryService } from '../services/assignDeliveryService';
 
@@ -19,6 +20,7 @@ export default function ShipmentDetails({ data, onRefresh, onCancelStatus, onOpe
   const [isExpanded, setIsExpanded] = useState(true);
   const [isQuickDeliveryOpen, setIsQuickDeliveryOpen] = useState(false);
   const [isPudoInfoOpen, setIsPudoInfoOpen] = useState(false);
+  const [isForceStatusOpen, setIsForceStatusOpen] = useState(false);
 
   const isDelivered = deliveryService.isDelivered(data);
   const isPudoAllowed = deliveryService.isPudoDeliveryAllowed(data);
@@ -163,6 +165,19 @@ export default function ShipmentDetails({ data, onRefresh, onCancelStatus, onOpe
               Anular Estado
             </button>
           )}
+          {/* Botón para forzar estado - Temporalmente oculto */}
+          {/* Comentado a petición del usuario
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setIsForceStatusOpen(true);
+            }}
+            className="flex items-center gap-1 px-2 py-1 text-sm bg-purple-600 text-white rounded hover:bg-purple-700"
+          >
+            <ForceIcon className="w-3 h-3" />
+            Forzar Estado
+          </button>
+          */}
           {isExpanded ? (
             <ChevronDown className="w-4 h-4 text-gray-400" />
           ) : (
@@ -260,6 +275,15 @@ export default function ShipmentDetails({ data, onRefresh, onCancelStatus, onOpe
           organicPointCode={pudoInfo.organicPointCode}
         />
       )}
+
+      {/* Modal para forzar estado */}
+      <ForceStatusModal
+        isOpen={isForceStatusOpen}
+        onClose={() => setIsForceStatusOpen(false)}
+        onForceStatus={onRefresh}
+        shippingCode={data.shipping_code}
+        shipmentData={data}
+      />
     </div>
   );
 }
