@@ -165,8 +165,7 @@ export default function ShipmentDetails({ data, onRefresh, onCancelStatus, onOpe
               Anular Estado
             </button>
           )}
-          {/* Botón para forzar estado - Temporalmente oculto */}
-          {/* Comentado a petición del usuario
+          {/* Botón para forzar estado */}
           <button
             onClick={(e) => {
               e.stopPropagation();
@@ -177,7 +176,6 @@ export default function ShipmentDetails({ data, onRefresh, onCancelStatus, onOpe
             <ForceIcon className="w-3 h-3" />
             Forzar Estado
           </button>
-          */}
           {isExpanded ? (
             <ChevronDown className="w-4 h-4 text-gray-400" />
           ) : (
