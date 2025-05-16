@@ -43,7 +43,7 @@ export default function ForceStatusModal({
   const isInitialized = useRef(false);
   const [targetStatus, setTargetStatus] = useState<StatusCode>('1500');  
   const [actionDatetime, setActionDatetime] = useState('');
-  const [hubCode, setHubCode] = useState('HQ001');
+  const [hubCode, setHubCode] = useState('008280');
   // Estado para rastrear los bultos seleccionados
   const [selectedPackages, setSelectedPackages] = useState<PackageItem[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -116,7 +116,7 @@ export default function ForceStatusModal({
       setActionDatetime(localDatetime);
       
       // Valores predeterminados para otros campos
-      setHubCode('HQ001');
+      setHubCode('008280');
       
       // Inicializar la lista de bultos seleccionados con su estado actual
       if (shipmentData && shipmentData.items_history) {
