@@ -7,6 +7,7 @@ import PudoInfoModal from './PudoInfoModal';
 import ForceStatusModal from './ForceStatusModal';
 import { isStatusCancellable } from '../config/eventConfig';
 import { assignDeliveryService } from '../services/assignDeliveryService';
+import { useAuth } from '../context/AuthContext';
 
 interface Props {
   data: ShippingData;
@@ -17,10 +18,14 @@ interface Props {
 }
 
 export default function ShipmentDetails({ data, onRefresh, onCancelStatus, onOpenDeliveryModal, onOpenAssignDeliveryModal }: Props) {
+  const { enrichedData } = useAuth();
   const [isExpanded, setIsExpanded] = useState(true);
   const [isQuickDeliveryOpen, setIsQuickDeliveryOpen] = useState(false);
   const [isPudoInfoOpen, setIsPudoInfoOpen] = useState(false);
   const [isForceStatusOpen, setIsForceStatusOpen] = useState(false);
+
+  const userRoles = enrichedData?.roles || [];
+  const canForceStatus = userRoles.includes('Operations_Central');
 
   const isDelivered = deliveryService.isDelivered(data);
   const isPudoAllowed = deliveryService.isPudoDeliveryAllowed(data);
@@ -166,16 +171,18 @@ export default function ShipmentDetails({ data, onRefresh, onCancelStatus, onOpe
             </button>
           )}
           {/* Botón para forzar estado */}
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              setIsForceStatusOpen(true);
-            }}
-            className="flex items-center gap-1 px-2 py-1 text-sm bg-purple-600 text-white rounded hover:bg-purple-700"
-          >
-            <ForceIcon className="w-3 h-3" />
-            Forzar Estado
-          </button>
+          {canForceStatus && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsForceStatusOpen(true);
+              }}
+              className="flex items-center gap-1 px-2 py-1 text-sm bg-purple-600 text-white rounded hover:bg-purple-700"
+            >
+              <ForceIcon className="w-3 h-3" />
+              Forzar Estado
+            </button>
+          )}
           {isExpanded ? (
             <ChevronDown className="w-4 h-4 text-gray-400" />
           ) : (

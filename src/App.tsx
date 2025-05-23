@@ -226,7 +226,7 @@ function App() {
     // Evitar cerrar/abrir el modal para prevenir problemas de estado
     const isModalAlreadyOpen = cancelEventData.isOpen;
     
-    setCancelEventData(prev => {
+    setCancelEventData(() => {
       console.log(' App.tsx - Actualizando cancelEventData con:', { 
         isAlreadyOpen: isModalAlreadyOpen,
         newStatus: status, 
@@ -442,7 +442,14 @@ function App() {
               onDeliver={enhancedHandleSearch}
               shippingCode={shipmentData.shipping_code}
               isPudoAllowed={deliveryService.isPudoDeliveryAllowed(shipmentData)}
-              pudoInfo={shipmentData.additionals?.find(a => a.additionalCode === 'PER')}
+              pudoInfo={
+                (() => {
+                  const pudo = shipmentData.additionals?.find(a => a.additionalCode === 'PER');
+                  return pudo && pudo.providerCode && pudo.organicPointCode 
+                    ? { providerCode: pudo.providerCode, organicPointCode: pudo.organicPointCode }
+                    : null;
+                })()
+              }
               currentStatus={shipmentData.shipping_status_code}
               shipmentData={shipmentData}
             />
@@ -452,7 +459,6 @@ function App() {
               onClose={() => setIsAssignDeliveryModalOpen(false)}
               onAssign={enhancedHandleSearch}
               shippingCode={shipmentData.shipping_code}
-              currentStatus={shipmentData.shipping_status_code}
               shipmentData={shipmentData}
             />
           </>

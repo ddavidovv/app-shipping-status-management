@@ -1,8 +1,12 @@
-import { Package, User, X } from 'lucide-react';
+import React, { useState } from 'react';
+import { Package, User, X, Info } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 export default function Header() {
-  const { userEmail, userRole } = useAuth();
+  const { email, enrichedData } = useAuth();
+  const userRoles = enrichedData?.roles || [];
+  const hubCodes = enrichedData?.hub_codes || [];
+  const [showDetails, setShowDetails] = useState(false);
 
   const handleClose = () => {
     try {
@@ -32,18 +36,51 @@ export default function Header() {
           </div>
           
           <div className="flex items-center gap-4">
-            {userEmail && (
+            {email && (
               <div className="flex items-center gap-2 text-sm text-gray-600">
                 <User className="w-4 h-4" />
-                <span>{userEmail}</span>
-                {userRole && (
-                  <span className="px-2 py-0.5 bg-gray-100 rounded-full text-xs font-medium">
-                    {userRole}
-                  </span>
+                <span>{email}</span>
+                <button
+                  type="button"
+                  className="ml-2 text-gray-400 hover:text-gray-700 focus:outline-none"
+                  title={showDetails ? 'Ocultar detalles' : 'Mostrar detalles'}
+                  onClick={() => setShowDetails((v) => !v)}
+                  aria-label="Mostrar detalles del usuario"
+                >
+                  <Info className="w-4 h-4" />
+                </button>
+                {showDetails && (
+                  <div className="flex flex-col gap-1 mt-2 bg-gray-50 border border-gray-200 rounded p-2 shadow-md absolute right-0 z-10 min-w-[220px]">
+                    <div className="mb-1 text-xs text-gray-500 font-semibold">Detalles de usuario</div>
+                    <div>
+                      <span className="font-medium">Roles:</span>{' '}
+                      {userRoles && userRoles.length > 0 ? (
+                        userRoles.map((role: string, index: number) => (
+                          <span key={`role-${index}`} className="inline-block ml-1 px-2 py-0.5 bg-blue-100 rounded-full text-xs font-medium text-blue-800">
+                            {role}
+                          </span>
+                        ))
+                      ) : (
+                        <span className="ml-1 px-2 py-0.5 bg-red-100 rounded-full text-xs font-medium text-red-800">Sin roles</span>
+                      )}
+                    </div>
+                    <div>
+                      <span className="font-medium">Hubs:</span>{' '}
+                      {hubCodes && hubCodes.length > 0 ? (
+                        hubCodes.map((hub: string, index: number) => (
+                          <span key={`hub-${index}`} className="inline-block ml-1 px-2 py-0.5 bg-green-200 rounded-full text-xs font-medium text-green-900">
+                            {hub}
+                          </span>
+                        ))
+                      ) : (
+                        <span className="ml-1 px-2 py-0.5 bg-red-100 rounded-full text-xs font-medium text-red-800">Sin hubs</span>
+                      )}
+                    </div>
+                  </div>
                 )}
               </div>
             )}
-            
+
             <button
               onClick={handleClose}
               className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
