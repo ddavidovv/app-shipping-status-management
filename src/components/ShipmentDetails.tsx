@@ -1,35 +1,28 @@
 import React, { useState } from 'react';
-import { MapPin, User, Package, ChevronDown, ChevronRight, RefreshCw, CheckCircle2, Home, Box, Building, XCircle, Truck, DollarSign, RefreshCw as ForceIcon } from 'lucide-react';
+import { MapPin, User, Package, ChevronDown, ChevronRight, RefreshCw, CheckCircle2, Home, Box, Building, XCircle, DollarSign, RefreshCw as ForceIcon } from 'lucide-react';
 import { ShippingData } from '../types';
 import { deliveryService } from '../services/deliveryService';
-import QuickDeliveryModal from './QuickDeliveryModal';
 import PudoInfoModal from './PudoInfoModal';
 import ForceStatusModal from './ForceStatusModal';
 import { isStatusCancellable } from '../config/eventConfig';
-import { assignDeliveryService } from '../services/assignDeliveryService';
 import { useAuth } from '../context/AuthContext';
 
 interface Props {
   data: ShippingData;
   onRefresh: () => void;
   onCancelStatus?: (status: any, packageCode?: string, packageNumber?: number) => void;
-  onOpenDeliveryModal?: () => void;
-  onOpenAssignDeliveryModal?: () => void;
 }
 
-export default function ShipmentDetails({ data, onRefresh, onCancelStatus, onOpenDeliveryModal, onOpenAssignDeliveryModal }: Props) {
+export default function ShipmentDetails({ data, onRefresh, onCancelStatus }: Props) {
   const { enrichedData } = useAuth();
   const [isExpanded, setIsExpanded] = useState(true);
-  const [isQuickDeliveryOpen, setIsQuickDeliveryOpen] = useState(false);
   const [isPudoInfoOpen, setIsPudoInfoOpen] = useState(false);
   const [isForceStatusOpen, setIsForceStatusOpen] = useState(false);
 
   const userRoles = enrichedData?.roles || [];
-  const canForceStatus = userRoles.includes('Operations_Central');
+  const canPerformSensitiveActions = userRoles.includes('Admin') || userRoles.includes('Operations_Central');
 
   const isDelivered = deliveryService.isDelivered(data);
-  const isPudoAllowed = deliveryService.isPudoDeliveryAllowed(data);
-  const isAssignmentAllowed = assignDeliveryService.isAssignmentAllowed(data);
 
   const formatAddress = (address: string, address2: string, postalCode: string, town: string, countryCode: string) => {
     return `${address}, ${postalCode} ${town} (${countryCode})${address2 ? ` - ${address2}` : ''}`;
@@ -129,39 +122,8 @@ export default function ShipmentDetails({ data, onRefresh, onCancelStatus, onOpe
             <RefreshCw className="w-3 h-3" />
             Actualizar
           </button>
-          {/* Mostrar botones de acción si no está entregado */}
-          {!isDelivered && (
-            <>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  if (onOpenDeliveryModal) {
-                    onOpenDeliveryModal();
-                  } else {
-                    setIsQuickDeliveryOpen(true);
-                  }
-                }}
-                className="flex items-center gap-1 px-2 py-1 text-sm bg-green-600 text-white rounded hover:bg-green-700"
-              >
-                <CheckCircle2 className="w-3 h-3" />
-                Entregar
-              </button>
-              {isAssignmentAllowed && onOpenAssignDeliveryModal && (
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onOpenAssignDeliveryModal();
-                  }}
-                  className="flex items-center gap-1 px-2 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700"
-                >
-                  <Truck className="w-3 h-3" />
-                  Asignar a Reparto
-                </button>
-              )}
-            </>
-          )}
           {/* Mostrar botón de Anular Estado siempre que haya un estado cancelable, independientemente de si está entregado */}
-          {hasCancellableStatus && onCancelStatus && (
+          {canPerformSensitiveActions && hasCancellableStatus && onCancelStatus && (
             <button
               onClick={handleAnularEstadoClick}
               className="flex items-center gap-1 px-2 py-1 text-sm bg-red-600 text-white rounded hover:bg-red-700"
@@ -171,7 +133,7 @@ export default function ShipmentDetails({ data, onRefresh, onCancelStatus, onOpe
             </button>
           )}
           {/* Botón para forzar estado */}
-          {canForceStatus && (
+          {canPerformSensitiveActions && (
             <button
               onClick={(e) => {
                 e.stopPropagation();
@@ -215,7 +177,7 @@ export default function ShipmentDetails({ data, onRefresh, onCancelStatus, onOpe
               <h4 className="text-sm font-semibold text-corporate-primary flex items-center gap-1 mb-1">
                 <MapPin className="w-4 h-4" />
                 Destinatario
-                {isPudoAllowed && (
+                {pudoInfo && (
                   <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-50 text-blue-700 text-xs font-medium rounded-full">
                     <Home className="w-3 h-3" />
                     Punto PUDO
@@ -232,7 +194,7 @@ export default function ShipmentDetails({ data, onRefresh, onCancelStatus, onOpe
                   data.destin_country_code
                 )}
               </p>
-              {isPudoAllowed && pudoInfo && (
+              {pudoInfo && (
                 <div className="mt-1 text-sm text-blue-600">
                   <div className="flex items-center gap-2">
                     <span className="font-medium">{pudoInfo.providerCode}</span>
@@ -259,36 +221,26 @@ export default function ShipmentDetails({ data, onRefresh, onCancelStatus, onOpe
         </div>
       )}
 
-      <QuickDeliveryModal
-        isOpen={isQuickDeliveryOpen}
-        onClose={() => setIsQuickDeliveryOpen(false)}
-        onDeliver={onRefresh}
-        shippingCode={data.shipping_code}
-        isPudoAllowed={isPudoAllowed}
-        pudoInfo={pudoInfo ? {
-          providerCode: pudoInfo.providerCode || '',
-          organicPointCode: pudoInfo.organicPointCode || ''
-        } : null}
-        currentStatus={data.shipping_status_code}
-        shipmentData={data}
-      />
-
-      {pudoInfo?.organicPointCode && (
+      {isPudoInfoOpen && pudoInfo && (
         <PudoInfoModal
           isOpen={isPudoInfoOpen}
           onClose={() => setIsPudoInfoOpen(false)}
-          organicPointCode={pudoInfo.organicPointCode}
+          organicPointCode={String(pudoInfo.additionalValue || '')}
         />
       )}
 
-      {/* Modal para forzar estado */}
-      <ForceStatusModal
-        isOpen={isForceStatusOpen}
-        onClose={() => setIsForceStatusOpen(false)}
-        onForceStatus={onRefresh}
-        shippingCode={data.shipping_code}
-        shipmentData={data}
-      />
+      {isForceStatusOpen && (
+        <ForceStatusModal
+          isOpen={isForceStatusOpen}
+          onClose={() => setIsForceStatusOpen(false)}
+          onForceStatus={() => {
+            // No cerrar el modal aquí, permitir múltiples forzados si es necesario      
+            onRefresh();
+          }}
+          shippingCode={data.shipping_code}
+          shipmentData={data} // Pasar shipmentData al modal
+        />
+      )}
     </div>
   );
 }

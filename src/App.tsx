@@ -103,12 +103,12 @@ function App() {
   // Función mejorada que combina resetAppState y handleSearch
   // IMPORTANTE: No usamos originalHandleSearch porque causa problemas con las referencias
   const enhancedHandleSearch = useCallback(async () => {
-    console.log('🔄 App.tsx - enhancedHandleSearch: INICIO');
+    console.log(' App.tsx - enhancedHandleSearch: INICIO');
     // Resetear el estado antes de realizar la búsqueda
     resetAppState();
     // Llamar directamente a la función handleSearch del hook
     // Esto asegura que siempre usamos la versión más actualizada
-    console.log('🔄 App.tsx - enhancedHandleSearch: Llamando a handleSearch');
+    console.log(' App.tsx - enhancedHandleSearch: Llamando a handleSearch');
     return await handleSearch();
   }, [resetAppState, handleSearch]);
 
@@ -395,8 +395,6 @@ function App() {
                   data={shipmentData}
                   onRefresh={enhancedHandleSearch}
                   onCancelStatus={handleCancelStatus}
-                  onOpenDeliveryModal={() => setIsDeliveryModalOpen(true)}
-                  onOpenAssignDeliveryModal={() => setIsAssignDeliveryModalOpen(true)}
                 />
                 
                 <ViewModeSelector
