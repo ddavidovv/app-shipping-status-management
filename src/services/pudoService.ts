@@ -7,9 +7,7 @@ export const pudoService = {
       {
         method: 'GET',
         headers: {
-          'client_id': import.meta.env.VITE_CLIENT_ID,
-          'client_secret': import.meta.env.VITE_CLIENT_SECRET,
-          'Authorization': import.meta.env.VITE_JWT_TOKEN
+          'Authorization': `Bearer ${sessionStorage.getItem('idToken')}`
         }
       }
     );

@@ -11,9 +11,7 @@ export const eventService = {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': import.meta.env.VITE_JWT_TOKEN,
-          'client_secret': import.meta.env.VITE_CLIENT_SECRET,
-          'client_id': import.meta.env.VITE_CLIENT_ID
+          'Authorization': `Bearer ${sessionStorage.getItem('idToken')}`
         }
       });
 
@@ -72,7 +70,7 @@ export const eventService = {
     };
   },
 
-  async cancelStatus(itemCode: string, eventDateTime: string, reason: string, statusDescription: string) {
+  async cancelStatus(itemCode: string, reason: string) {
     // Obtener el email del usuario desde sessionStorage
     let userEmail = 'test@example.com'; // Valor por defecto
     
@@ -112,9 +110,7 @@ export const eventService = {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': import.meta.env.VITE_JWT_TOKEN,
-          'client_secret': import.meta.env.VITE_CLIENT_SECRET,
-          'client_id': import.meta.env.VITE_CLIENT_ID
+          'Authorization': `Bearer ${sessionStorage.getItem('idToken')}`
         },
         body: JSON.stringify(requestBody)
       });
@@ -174,9 +170,7 @@ export const eventService = {
     // Generar el comando curl
     const curlCommand = `curl --location --request PATCH '${url}' \\
 --header 'Content-Type: application/json' \\
---header 'client_id: ${import.meta.env.VITE_CLIENT_ID}' \\
---header 'client_secret: ${import.meta.env.VITE_CLIENT_SECRET}' \\
---header 'Authorization: ${import.meta.env.VITE_JWT_TOKEN}' \\
+--header 'Authorization: Bearer ${sessionStorage.getItem('idToken')}' \\
 --data '${JSON.stringify(requestBody, null, 2)}'`;
 
     return curlCommand;
@@ -196,9 +190,7 @@ export const eventService = {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'jwt-token': import.meta.env.VITE_JWT_TOKEN,
-          'client_secret': import.meta.env.VITE_CLIENT_SECRET,
-          'client_id': import.meta.env.VITE_CLIENT_ID
+          'Authorization': `Bearer ${sessionStorage.getItem('idToken')}`
         },
         body: JSON.stringify(requestBody)
       });

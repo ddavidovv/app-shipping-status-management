@@ -221,9 +221,7 @@ export const forceStatusService = {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'client_id': import.meta.env.VITE_CLIENT_ID,
-            'client_secret': import.meta.env.VITE_CLIENT_SECRET,
-            'Authorization': import.meta.env.VITE_JWT_TOKEN
+            'Authorization': `Bearer ${sessionStorage.getItem('idToken')}`
           },
           body: JSON.stringify(payload)
         }
@@ -309,9 +307,7 @@ export const forceStatusService = {
     const baseUrl = import.meta.env.VITE_API_URL || 'https://api-test.cttexpress.com';
     return `curl --location '${baseUrl}/enterprise-portal/incident-mgmt/fix/v1/package-events' \
 --header 'Content-Type: application/json' \
---header 'client_id: ${import.meta.env.VITE_CLIENT_ID}' \
---header 'client_secret: ${import.meta.env.VITE_CLIENT_SECRET}' \
---header 'Authorization: ${import.meta.env.VITE_JWT_TOKEN}' \
+--header 'Authorization: Bearer ${sessionStorage.getItem('idToken')}' \
 --data '${JSON.stringify(payload, null, 2)}'`;
   }
 };

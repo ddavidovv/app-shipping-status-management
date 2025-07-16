@@ -151,9 +151,7 @@ export function useShipmentSearch(): UseShipmentSearchResult {
       headers: {
         'Accept': '*/*',
         'Accept-Language': 'en-US,en;q=0.9,es;q=0.8',
-        'client_id': import.meta.env.VITE_CLIENT_ID,
-        'client_secret': import.meta.env.VITE_CLIENT_SECRET,
-        'Authorization': idToken
+        'Authorization': `Bearer ${idToken}`
       }
     });
 

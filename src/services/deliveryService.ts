@@ -53,9 +53,7 @@ export const deliveryService = {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'client_id': import.meta.env.VITE_CLIENT_ID,
-            'client_secret': import.meta.env.VITE_CLIENT_SECRET,
-            'Authorization': import.meta.env.VITE_JWT_TOKEN
+            'Authorization': `Bearer ${sessionStorage.getItem('idToken')}`
           },
           body: JSON.stringify(payload)
         }
@@ -101,9 +99,7 @@ export const deliveryService = {
 
     return `curl --location '${import.meta.env.VITE_API_URL}/enterprise-portal/shipping-status-mgmt/dlv/last-mile/v1/journey-snapshots' \\
 --header 'Content-Type: application/json' \\
---header 'client_id: ${import.meta.env.VITE_CLIENT_ID}' \\
---header 'client_secret: ${import.meta.env.VITE_CLIENT_SECRET}' \\
---header 'Authorization: ${import.meta.env.VITE_JWT_TOKEN}' \\
+--header 'Authorization: Bearer ${sessionStorage.getItem('idToken')}' \\ \\
 --data '${JSON.stringify(payload, null, 2)}'`;
   },
 

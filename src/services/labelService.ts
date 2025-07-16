@@ -12,9 +12,7 @@ export const labelService = {
         const response = await fetch(url, {
           method: 'GET',
           headers: {
-            'jwt-token': import.meta.env.VITE_JWT_TOKEN || '',
-            'client_secret': import.meta.env.VITE_CLIENT_SECRET || '',
-            'client_id': import.meta.env.VITE_CLIENT_ID || '',
+            'Authorization': `Bearer ${sessionStorage.getItem('idToken')}`,
             'Accept': 'application/json'
           }
         });
@@ -32,7 +30,7 @@ export const labelService = {
         }
   
         // Buscar una etiqueta válida
-        const validLabel = responseData.data.find(item => item.label && typeof item.label === "string");
+        const validLabel = responseData.data.find((item: { label: string }) => item.label && typeof item.label === "string");
   
         if (!validLabel) {
           throw new Error('No se encontró una etiqueta PDF válida en la respuesta');

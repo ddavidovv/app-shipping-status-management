@@ -15,11 +15,7 @@ export default defineConfig(({ mode }) => {
           target: env.VITE_API_URL,
           changeOrigin: true,
           secure: false,
-          headers: {
-            'Authorization': env.VITE_JWT_TOKEN,
-            'client_secret': env.VITE_CLIENT_SECRET,
-            'client_id': env.VITE_CLIENT_ID
-          },
+
           configure: (proxy, _options) => {
             proxy.on('error', (err, _req, _res) => {
               console.log('proxy error', err);
@@ -36,10 +32,12 @@ export default defineConfig(({ mode }) => {
             proxy.on('proxyRes', (proxyRes, req, _res) => {
               console.log('\n📡 Response Details:');
               console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-              console.log('Status:', proxyRes.statusCode);
               console.log('Path:', req.url);
-              if (proxyRes.statusCode >= 400) {
-                console.log('Response Headers:', proxyRes.headers);
+              if (proxyRes.statusCode) {
+                console.log('Status:', proxyRes.statusCode);
+                if (proxyRes.statusCode >= 400) {
+                  console.log('Response Headers:', proxyRes.headers);
+                }
               }
               console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
             });
