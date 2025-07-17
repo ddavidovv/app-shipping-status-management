@@ -26,31 +26,24 @@ export default defineConfig(({ mode }) => {
           type: 'module'
         },
         workbox: {
-          // Configuración más agresiva para detectar cambios
+          // Configuración balanceada para detectar cambios sin penalizar rendimiento
           clientsClaim: true,
           skipWaiting: true,
           cleanupOutdatedCaches: true,
-          // Incluir archivos críticos que deben invalidar el cache
-          additionalManifestEntries: [
-            {
-              url: `/?v=${packageJson.version}`,
-              revision: packageJson.version
-            },
-            {
-              url: '/version.json',
-              revision: `${packageJson.version}-${Date.now()}`
-            }
-          ],
-          // Estrategias de cache más específicas
+          // Cache strategies optimizadas
           runtimeCaching: [
             {
               urlPattern: /^https:\/\/api-test\.cttexpress\.com\//,
               handler: 'NetworkFirst',
               options: {
                 cacheName: 'api-cache',
-                networkTimeoutSeconds: 10,
+                networkTimeoutSeconds: 8,
                 cacheableResponse: {
                   statuses: [0, 200]
+                },
+                expiration: {
+                  maxEntries: 50,
+                  maxAgeSeconds: 5 * 60 // 5 minutos
                 }
               }
             }

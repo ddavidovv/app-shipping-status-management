@@ -2,9 +2,11 @@ import { createContext, useContext, useState, useEffect, ReactNode, FC } from 'r
 import { useRegisterSW } from 'virtual:pwa-register/react';
 import { useAuth } from './AuthContext';
 
-// Intervalos más frecuentes para mejor detección
-const CHECK_INTERVAL = 2 * 60 * 1000; // 2 minutos
-const IMMEDIATE_CHECK_INTERVAL = 10 * 1000; // 10 segundos para checks inmediatos
+// Intervalos optimizados para balance rendimiento/detección
+const CHECK_INTERVAL = 5 * 60 * 1000; // 5 minutos (reducido de 2)
+const VISIBILITY_CHECK_DELAY = 30 * 1000; // 30 segundos después de volver a la pestaña
+const INITIAL_CHECK_DELAY = 5 * 1000; // 5 segundos inicial (reducido de 1)
+const RETRY_DELAY = 2 * 60 * 1000; // 2 minutos para reintentos
 
 interface PWAUpdateContextType {
   needRefresh: boolean;
@@ -19,6 +21,9 @@ const PWAUpdateContext = createContext<PWAUpdateContextType | undefined>(undefin
 export const PWAUpdateProvider: FC<{ children: ReactNode }> = ({ children }) => {
   const [countdown, setCountdown] = useState(CHECK_INTERVAL / 1000);
   const [lastVersion, setLastVersion] = useState<string>('');
+  const [isChecking, setIsChecking] = useState(false);
+  const [lastCheckTime, setLastCheckTime] = useState(0);
+  const [checkAttempts, setCheckAttempts] = useState(0);
   const { roles } = useAuth();
   const isAdmin = roles.includes('Admin');
   const currentVersion = import.meta.env.VITE_APP_VERSION || '1.0.0';
@@ -33,24 +38,45 @@ export const PWAUpdateProvider: FC<{ children: ReactNode }> = ({ children }) => 
     },
     onNeedRefresh() {
       console.log(`[PWA] Update available. Current version: ${currentVersion}`);
+      setCheckAttempts(0); // Reset attempts cuando se detecta actualización
     },
     onOfflineReady() {
       console.log('[PWA] App ready to work offline');
     },
   });
 
-  // Función para verificar cambios de versión manualmente
+  // Función optimizada para verificar cambios de versión
   const checkVersionChange = async (): Promise<boolean> => {
+    // Evitar checks concurrentes
+    if (isChecking) {
+      if (isAdmin) console.log('[PWA] Check ya en progreso, saltando...');
+      return false;
+    }
+
+    // Throttling: no más de un check cada 30 segundos
+    const now = Date.now();
+    if (now - lastCheckTime < 30000) {
+      if (isAdmin) console.log('[PWA] Check muy reciente, saltando...');
+      return false;
+    }
+
+    setIsChecking(true);
+    setLastCheckTime(now);
+
     try {
-      // Verificar si hay una nueva versión disponible
-      const response = await fetch('/version.json?' + Date.now(), {
-        cache: 'no-cache',
+      // Usar AbortController para timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 segundos timeout
+
+      const response = await fetch('/version.json?' + now, {
+        signal: controller.signal,
+        cache: 'no-store',
         headers: {
-          'Cache-Control': 'no-cache, no-store, must-revalidate',
-          'Pragma': 'no-cache',
-          'Expires': '0'
+          'Cache-Control': 'no-cache'
         }
       });
+
+      clearTimeout(timeoutId);
       
       if (response.ok) {
         const versionData = await response.json();
@@ -62,39 +88,57 @@ export const PWAUpdateProvider: FC<{ children: ReactNode }> = ({ children }) => 
         
         if (serverVersion !== currentVersion && serverVersion !== lastVersion) {
           setLastVersion(serverVersion);
+          setCheckAttempts(0);
           return true;
         }
       }
+      
+      setCheckAttempts(0); // Reset en caso de éxito
     } catch (error) {
+      setCheckAttempts(prev => prev + 1);
       if (isAdmin) {
-        console.warn('[PWA] Error checking version:', error);
+        console.warn(`[PWA] Error checking version (attempt ${checkAttempts + 1}):`, error.name);
       }
+    } finally {
+      setIsChecking(false);
     }
     return false;
   };
 
   const forceCheck = async () => {
+    // Limitar reintentos para evitar spam
+    if (checkAttempts >= 3) {
+      if (isAdmin) {
+        console.log('[PWA] Máximo de reintentos alcanzado, esperando...');
+      }
+      return;
+    }
+
     if (isAdmin) {
       console.log('[PWA] Forzando verificación de actualizaciones...');
     }
     
-    // Verificar cambios de versión
+    // Verificar cambios de versión primero (más rápido)
     const versionChanged = await checkVersionChange();
     if (versionChanged) {
       if (isAdmin) {
         console.log('[PWA] Cambio de versión detectado, actualizando Service Worker...');
       }
+      // Solo actualizar SW si hay cambio de versión
+      await updateServiceWorker(true);
+    } else {
+      // Si no hay cambio de versión, check SW menos frecuentemente
+      if (checkAttempts === 0) {
+        await updateServiceWorker(true);
+      }
     }
-    
-    // Actualizar Service Worker
-    await updateServiceWorker(true);
   };
 
   useEffect(() => {
-    // Check inicial inmediato
+    // Check inicial con delay
     const initialCheck = setTimeout(() => {
       forceCheck();
-    }, 1000);
+    }, INITIAL_CHECK_DELAY);
 
     // Verificaciones regulares
     const interval = setInterval(() => {
@@ -104,14 +148,7 @@ export const PWAUpdateProvider: FC<{ children: ReactNode }> = ({ children }) => 
       forceCheck();
     }, CHECK_INTERVAL);
 
-    // Verificaciones más frecuentes si hay una actualización pendiente
-    const immediateInterval = needRefresh ? setInterval(() => {
-      if (isAdmin) {
-        console.log('[PWA] Verificación inmediata (actualización pendiente)...');
-      }
-      forceCheck();
-    }, IMMEDIATE_CHECK_INTERVAL) : null;
-
+    // Countdown
     const countdownInterval = setInterval(() => {
       setCountdown(prev => (prev > 0 ? prev - 1 : CHECK_INTERVAL / 1000));
     }, 1000);
@@ -119,22 +156,32 @@ export const PWAUpdateProvider: FC<{ children: ReactNode }> = ({ children }) => 
     return () => {
       clearTimeout(initialCheck);
       clearInterval(interval);
-      if (immediateInterval) clearInterval(immediateInterval);
       clearInterval(countdownInterval);
     };
-  }, [updateServiceWorker, needRefresh]);
+  }, [updateServiceWorker]);
 
-  // Listener para cambios de visibilidad (cuando el usuario vuelve a la pestaña)
+  // Listener optimizado para cambios de visibilidad
   useEffect(() => {
+    let visibilityTimeout: NodeJS.Timeout;
+    
     const handleVisibilityChange = () => {
-      if (!document.hidden && isAdmin) {
-        console.log('[PWA] Pestaña visible, verificando actualizaciones...');
-        forceCheck();
+      if (!document.hidden) {
+        // Delay para evitar checks innecesarios en cambios rápidos de pestaña
+        clearTimeout(visibilityTimeout);
+        visibilityTimeout = setTimeout(() => {
+          if (isAdmin) {
+            console.log('[PWA] Pestaña visible, verificando actualizaciones...');
+          }
+          forceCheck();
+        }, VISIBILITY_CHECK_DELAY);
       }
     };
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
-    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      clearTimeout(visibilityTimeout);
+    };
   }, []);
 
   useEffect(() => {
