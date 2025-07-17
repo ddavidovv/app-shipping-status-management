@@ -1,219 +1,274 @@
-import { createContext, useContext, useState, useEffect, ReactNode, FC } from 'react';
-import { useRegisterSW } from 'virtual:pwa-register/react';
-import { useAuth } from './AuthContext';
+import React, { createContext, useContext, useState, useEffect } from 'react';
 
-// Intervalos optimizados para balance rendimiento/detección
-const CHECK_INTERVAL = 5 * 60 * 1000; // 5 minutos (reducido de 2)
-const VISIBILITY_CHECK_DELAY = 30 * 1000; // 30 segundos después de volver a la pestaña
-const INITIAL_CHECK_DELAY = 5 * 1000; // 5 segundos inicial (reducido de 1)
-const RETRY_DELAY = 2 * 60 * 1000; // 2 minutos para reintentos
-
-interface PWAUpdateContextType {
-  needRefresh: boolean;
-  updateServiceWorker: (reloadPage?: boolean) => Promise<void>;
-  countdown: number;
-  currentVersion: string;
-  forceCheck: () => Promise<void>;
+interface AuthContextType {
+  isAuthenticated: boolean;
+  idToken: string | null;
+  loading: boolean;
+  error: string | null;
+  userEmail: string | null;
+  userRole: string | null;
+  email: string | null;
+  roles: string[];
+  hub_codes: string[];
+  enrichedData: any;
 }
 
-const PWAUpdateContext = createContext<PWAUpdateContextType | undefined>(undefined);
+const AuthContext = createContext<AuthContextType>({
+  isAuthenticated: false,
+  idToken: null,
+  loading: true,
+  error: null,
+  userEmail: null,
+  userRole: null,
+  email: null,
+  roles: [],
+  hub_codes: [],
+  enrichedData: null,
+});
 
-export const PWAUpdateProvider: FC<{ children: ReactNode }> = ({ children }) => {
-  const [countdown, setCountdown] = useState(CHECK_INTERVAL / 1000);
-  const [lastVersion, setLastVersion] = useState<string>('');
-  const [isChecking, setIsChecking] = useState(false);
-  const [lastCheckTime, setLastCheckTime] = useState(0);
-  const { roles } = useAuth();
-  const isAdmin = roles.includes('Admin');
-  const [checkAttempts, setCheckAttempts] = useState(0);
-  const currentVersion = import.meta.env.VITE_APP_VERSION || '1.0.0';
-  const [forceRefresh, setForceRefresh] = useState(false);
-  const [forceRefresh, setForceRefresh] = useState(false);
-
-  const { 
-    needRefresh: [needRefresh, setNeedRefresh], 
-    updateServiceWorker 
-  }
-  const { 
-    needRefresh: [needRefresh, setNeedRefresh], 
-    updateServiceWorker 
-  } = useRegisterSW({
-    onRegistered() {
-      if (isAdmin) {
-        console.log(`[PWA] Service Worker registered. Current version: ${currentVersion}`);
-      }
-      setLastVersion(currentVersion);
-    },
-    onRegisterError(error) {
-      if (isAdmin) {
-        console.error('[PWA] Service Worker registration error:', error);
-      }
-    },
-    onNeedRefresh() {
-      console.log(`[PWA] 🚨 Update available. Current version: ${currentVersion}`);
-      setForceRefresh(true);
-    },
-    onOfflineReady() {
-      if (isAdmin) {
-        console.log('[PWA] App ready to work offline');
-      }
-    },
+export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const [state, setState] = useState<AuthContextType>({
+    isAuthenticated: false,
+    idToken: null,
+    loading: true,
+    error: null,
+    userEmail: null,
+    userRole: null,
+    email: null,
+    roles: [],
+    hub_codes: [],
+    enrichedData: null,
   });
 
-  // Función optimizada para verificar cambios de versión
-  const checkVersionChange = async (): Promise<boolean> => {
-    // Evitar checks concurrentes
-    if (isChecking) {
-      if (isAdmin) console.log('[PWA] Check ya en progreso, saltando...');
-      return false;
-    }
-
-    // Throttling: no más de un check cada 30 segundos
-    const now = Date.now();
-    if (now - lastCheckTime < 30000) {
-      if (isAdmin) console.log('[PWA] Check muy reciente, saltando...');
-      return false;
-    }
-
-    setIsChecking(true);
-    setLastCheckTime(now);
-
-    try {
-      // Usar AbortController para timeout
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 segundos timeout
-
-      const response = await fetch('/version.json?' + now, {
-        signal: controller.signal,
-        cache: 'no-store',
-        headers: {
-          'Cache-Control': 'no-cache'
-        }
+  // Permitir desarrollo local sin autenticación real
+  const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+  
+  useEffect(() => {
+    if (isLocalhost) {
+      console.log('[AuthContext] 🏠 Modo localhost detectado, usando datos mock');
+      setState({
+        isAuthenticated: true,
+        idToken: 'mock-token-for-local-development',
+        loading: false,
+        error: null,
+        userEmail: 'usuario@ejemplo.com',
+        userRole: 'Operador',
+        email: 'usuario@ejemplo.com',
+        roles: ['Admin', 'Operations_Central'],
+        hub_codes: ['008280', '008290'],
+        enrichedData: {
+          roles: ['Admin', 'Operations_Central'],
+          hub_codes: ['008280', '008290']
+        },
       });
-
-      clearTimeout(timeoutId);
-      
-      if (response.ok) {
-        const versionData = await response.json();
-        const serverVersion = versionData.version;
-        
-        console.log(`[PWA] Version check - Current: ${currentVersion}, Server: ${serverVersion}, Last: ${lastVersion}`);
-        
-        if (serverVersion !== currentVersion && serverVersion !== lastVersion) {
-          console.log(`[PWA] 🚨 NEW VERSION DETECTED! Triggering update...`);
-          setLastVersion(serverVersion);
-          setCheckAttempts(0);
-          // Forzar la notificación de actualización
-          setNeedRefresh(true);
-          setForceRefresh(true);
-          // Forzar la notificación de actualización
-          setNeedRefresh(true);
-          setForceRefresh(true);
-          return true;
-        } else {
-          console.log(`[PWA] ✅ No version change detected`);
-        }
-      } else {
-        console.warn(`[PWA] ❌ Failed to fetch version.json: ${response.status}`);
-      }
-      
-      setCheckAttempts(0); // Reset en caso de éxito
-    } catch (error) {
-      setCheckAttempts(prev => prev + 1);
-      console.warn(`[PWA] ❌ Error checking version (attempt ${checkAttempts + 1}):`, error.name);
-    } finally {
-      setIsChecking(false);
-    }
-    return false;
-  };
-
-  const forceCheck = async () => {
-    // Limitar reintentos para evitar spam
-    if (checkAttempts >= 3) {
-      if (isAdmin) {
-        console.log('[PWA] Máximo de reintentos alcanzado, esperando...');
-      }
       return;
     }
 
-    console.log('[PWA] 🔍 Forzando verificación de actualizaciones...');
-    
-    // Verificar cambios de versión primero (más rápido)
-    const versionChanged = await checkVersionChange();
-    if (versionChanged) {
-      console.log('[PWA] 🔄 Cambio de versión detectado, actualizando Service Worker...');
-      // Solo actualizar SW si hay cambio de versión
-      await updateServiceWorker(true);
-    } else {
-      // Si no hay cambio de versión, check SW menos frecuentemente
-      if (checkAttempts === 0) {
-        console.log('[PWA] 🔄 Verificando Service Worker...');
-        await updateServiceWorker(true);
+    const handleMessage = (event: MessageEvent) => {
+      // Ignorar mensajes de React DevTools
+      if (
+        event.data?.source === 'react-devtools-content-script' ||
+        event.data?.source === 'react-devtools-backend-manager' ||
+        event.data?.source === 'react-devtools-bridge'
+      ) {
+        return;
       }
-    }
-  };
 
-  useEffect(() => {
-    // Check inicial con delay
-    const initialCheck = setTimeout(() => {
-      forceCheck();
-    }, INITIAL_CHECK_DELAY);
+      console.log('[AuthContext] 📥 Mensaje recibido:', event.data);
 
-    // Verificaciones regulares
-    const interval = setInterval(() => {
-      console.log('[PWA] ⏰ Verificación automática de actualizaciones...');
-      forceCheck();
-    }, CHECK_INTERVAL);
-
-    // Countdown
-    const countdownInterval = setInterval(() => {
-      setCountdown(prev => (prev > 0 ? prev - 1 : CHECK_INTERVAL / 1000));
-    }, 1000);
-
-    return () => {
-      clearTimeout(initialCheck);
-      clearInterval(interval);
-      clearInterval(countdownInterval);
-    };
-  }, [updateServiceWorker]);
-
-  // Listener optimizado para cambios de visibilidad
-  useEffect(() => {
-    let visibilityTimeout: NodeJS.Timeout;
-    
-    const handleVisibilityChange = () => {
-      if (!document.hidden) {
-        // Delay para evitar checks innecesarios en cambios rápidos de pestaña
-        clearTimeout(visibilityTimeout);
-        visibilityTimeout = setTimeout(() => {
-          console.log('[PWA] 👁️ Pestaña visible, verificando actualizaciones...');
-          forceCheck();
-        }, VISIBILITY_CHECK_DELAY);
+      if (event.data?.type === 'TOKEN_INIT' || event.data?.type === 'TOKEN_UPDATE') {
+        const token = event.data.payload?.idToken;
+        const enrichedData = event.data.payload?.enrichedData;
+        
+        console.log('[AuthContext] 📥 Datos recibidos:', { 
+          hasToken: !!token, 
+          enrichedData,
+          roles: enrichedData?.roles,
+          hub_codes: enrichedData?.hub_codes
+        });
+        
+        if (token && hasValidToken(token)) {
+          sessionStorage.setItem('idToken', token);
+          const userInfo = getUserInfoFromToken(token);
+          
+          // Combinar datos del token con datos enriquecidos
+          const roles = enrichedData?.roles || userInfo.roles || [];
+          const hub_codes = enrichedData?.hub_codes || [];
+          
+          setState({
+            isAuthenticated: true,
+            idToken: token,
+            loading: false,
+            error: null,
+            userEmail: userInfo.email,
+            userRole: userInfo.role,
+            email: userInfo.email,
+            roles: roles,
+            hub_codes: hub_codes,
+            enrichedData: enrichedData,
+          });
+        } else {
+          setState({
+            isAuthenticated: false,
+            idToken: null,
+            loading: false,
+            error: 'Token inválido',
+            userEmail: null,
+            userRole: null,
+            email: null,
+            roles: [],
+            hub_codes: [],
+            enrichedData: null,
+          });
+        }
+      } else if (event.data?.type === 'TOKEN_EXPIRED') {
+        setState({
+          isAuthenticated: false,
+          idToken: null,
+          loading: false,
+          error: 'Token expirado',
+          userEmail: null,
+          userRole: null,
+          email: null,
+          roles: [],
+          hub_codes: [],
+          enrichedData: null,
+        });
+        requestTokenFromOpener();
       }
     };
 
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-      clearTimeout(visibilityTimeout);
+    const requestTokenFromOpener = () => {
+      if (!window.opener) {
+        setState(prev => ({
+          ...prev,
+          loading: false,
+          error: 'Esta aplicación debe abrirse desde la aplicación principal',
+        }));
+        return;
+      }
+      try {
+        console.log('[AuthContext] 📤 Solicitando token y datos enriquecidos...');
+        window.opener.postMessage(
+          {
+            type: 'READY_FOR_TOKEN',
+            source: 'CHILD_APP',
+            requestEnrichedData: true
+          },
+          '*'
+        );
+      } catch (error) {
+        setState(prev => ({
+          ...prev,
+          loading: false,
+          error: 'Error de comunicación con la aplicación principal',
+        }));
+      }
     };
-  }, []);
 
-  useEffect(() => {
-    if (needRefresh || forceRefresh) {
-      console.log(`[PWA] 🚨 Actualización crítica detectada para versión ${currentVersion}. Mostrando notificación obligatoria...`);
+    const initAuth = () => {
+      const storedToken = getIdToken();
+      if (storedToken && hasValidToken(storedToken)) {
+        const userInfo = getUserInfoFromToken(storedToken);
+        setState({
+          isAuthenticated: true,
+          idToken: storedToken,
+          loading: false,
+          error: null,
+          userEmail: userInfo.email,
+          userRole: userInfo.role,
+          email: userInfo.email,
+          roles: userInfo.roles || [],
+          hub_codes: [],
+          enrichedData: null,
+        });
+        
+        // Solicitar datos enriquecidos actualizados
+        setTimeout(() => {
+          requestTokenFromOpener();
+        }, 1000);
+      } else {
+        requestTokenFromOpener();
+      }
+    };
+
+    window.addEventListener('message', handleMessage);
+    initAuth();
+
+    let refreshInterval: number | null = null;
+    if (window.opener) {
+      refreshInterval = window.setInterval(() => {
+        if (state.idToken) {
+          try {
+            window.opener?.postMessage(
+              {
+                type: 'TOKEN_REFRESH_REQUEST',
+                source: 'CHILD_APP',
+                requestEnrichedData: true
+              },
+              '*'
+            );
+          } catch {}
+        }
+      }, 4 * 60 * 1000);
     }
-  }, [needRefresh, forceRefresh, currentVersion]);
+    return () => {
+      window.removeEventListener('message', handleMessage);
+      if (refreshInterval !== null) {
+        clearInterval(refreshInterval);
+      }
+    };
+  }, [state.idToken, isLocalhost]);
 
-  const value = { needRefresh, updateServiceWorker, countdown, currentVersion, forceCheck };
+  return (
+    <AuthContext.Provider value={state}>
+      {children}
+    </AuthContext.Provider>
+  );
+}
 
-  return <PWAUpdateContext.Provider value={value}>{children}</PWAUpdateContext.Provider>;
-};
-
-export const usePWAUpdate = () => {
-  const context = useContext(PWAUpdateContext);
-  if (context === undefined) {
-    throw new Error('usePWAUpdate must be used within a PWAUpdateProvider');
+export function useAuth() {
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error('useAuth debe usarse dentro de un AuthProvider');
   }
   return context;
+}
+
+// --- Funciones Helper ---
+const getIdToken = (): string | null => {
+  try {
+    return sessionStorage.getItem('idToken');
+  } catch {
+    return null;
+  }
+};
+
+const hasValidToken = (token: string): boolean => {
+  try {
+    const [header, payload, signature] = token.split('.');
+    if (!header || !payload || !signature) return false;
+    const decodedPayload = JSON.parse(atob(payload));
+    const expirationTime = decodedPayload.exp * 1000;
+    return expirationTime > Date.now();
+  } catch {
+    return false;
+  }
+};
+
+const getUserInfoFromToken = (token: string): { 
+  email: string | null; 
+  role: string | null; 
+  roles: string[] 
+} => {
+  try {
+    const [, payload] = token.split('.');
+    const decodedPayload = JSON.parse(atob(payload));
+    const email = decodedPayload.email || null;
+    const role = decodedPayload.role || decodedPayload.roles?.[0] || decodedPayload['cognito:groups']?.[0] || null;
+    const roles = decodedPayload.roles || decodedPayload['cognito:groups'] || [];
+    return { email, role, roles };
+  } catch {
+    return { email: null, role: null, roles: [] };
+  }
 };
