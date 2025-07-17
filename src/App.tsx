@@ -18,6 +18,7 @@ import { useShipmentSearch } from './hooks/useShipmentSearch';
 import QuickDeliveryModal from './components/QuickDeliveryModal';
 import { deliveryService } from './services/deliveryService';
 import AssignDeliveryModal from './components/AssignDeliveryModal';
+import UpdatePrompt from './components/UpdatePrompt';
 
 function App() {
   const { isAuthenticated, loading: authLoading, error: authError } = useAuth();
@@ -263,10 +264,8 @@ function App() {
       
       // Intentar cancelar el estado
       const result = await eventService.cancelStatus(
-        packageCode, 
-        cancelEventData.event.event_date, 
-        reason, 
-        cancelEventData.event.description
+        packageCode,
+        reason
       );
       
       console.log('Cancel status result:', result);
@@ -362,7 +361,9 @@ function App() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
+    <>
+      <UpdatePrompt />
+      <div className="min-h-screen bg-gray-50 flex flex-col">
       <Header />
       <main className="flex-1 container mx-auto px-4 py-4 flex flex-col max-h-[calc(100vh-4rem)]">
         <SearchBar
@@ -463,6 +464,7 @@ function App() {
         )}
       </main>
     </div>
+   </>
   );
 }
 
