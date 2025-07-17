@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect, ReactNode, FC } from 'react';
 import { useRegisterSW } from 'virtual:pwa-register/react';
 import { useAuth } from './AuthContext';
+import { useAuth } from './AuthContext';
 
 // Intervalos optimizados para balance rendimiento/detección
 const CHECK_INTERVAL = 5 * 60 * 1000; // 5 minutos (reducido de 2)
@@ -23,6 +24,8 @@ export const PWAUpdateProvider: FC<{ children: ReactNode }> = ({ children }) => 
   const [lastVersion, setLastVersion] = useState<string>('');
   const [isChecking, setIsChecking] = useState(false);
   const [lastCheckTime, setLastCheckTime] = useState(0);
+  const { roles } = useAuth();
+  const isAdmin = roles.includes('Admin');
   const [checkAttempts, setCheckAttempts] = useState(0);
   const { roles } = useAuth();
   const isAdmin = roles.includes('Admin');
@@ -30,18 +33,26 @@ export const PWAUpdateProvider: FC<{ children: ReactNode }> = ({ children }) => 
 
   const { needRefresh: [needRefresh], updateServiceWorker } = useRegisterSW({
     onRegistered() {
-      console.log(`[PWA] Service Worker registered. Current version: ${currentVersion}`);
+      if (isAdmin) {
+        console.log(`[PWA] Service Worker registered. Current version: ${currentVersion}`);
+      }
       setLastVersion(currentVersion);
     },
     onRegisterError(error) {
-      console.error('[PWA] Service Worker registration error:', error);
+      if (isAdmin) {
+        console.error('[PWA] Service Worker registration error:', error);
+      }
     },
     onNeedRefresh() {
-      console.log(`[PWA] Update available. Current version: ${currentVersion}`);
+      if (isAdmin) {
+        console.log(`[PWA] Update available. Current version: ${currentVersion}`);
+      }
       setCheckAttempts(0); // Reset attempts cuando se detecta actualización
     },
     onOfflineReady() {
-      console.log('[PWA] App ready to work offline');
+      if (isAdmin) {
+        console.log('[PWA] App ready to work offline');
+      }
     },
   });
 
@@ -82,23 +93,24 @@ export const PWAUpdateProvider: FC<{ children: ReactNode }> = ({ children }) => 
         const versionData = await response.json();
         const serverVersion = versionData.version;
         
-        if (isAdmin) {
-          console.log(`[PWA] Version check - Current: ${currentVersion}, Server: ${serverVersion}`);
-        }
+        console.log(`[PWA] Version check - Current: ${currentVersion}, Server: ${serverVersion}, Last: ${lastVersion}`);
         
         if (serverVersion !== currentVersion && serverVersion !== lastVersion) {
+          console.log(`[PWA] 🚨 NEW VERSION DETECTED! Triggering update...`);
           setLastVersion(serverVersion);
           setCheckAttempts(0);
           return true;
+        } else {
+          console.log(`[PWA] ✅ No version change detected`);
         }
+      } else {
+        console.warn(`[PWA] ❌ Failed to fetch version.json: ${response.status}`);
       }
       
       setCheckAttempts(0); // Reset en caso de éxito
     } catch (error) {
       setCheckAttempts(prev => prev + 1);
-      if (isAdmin) {
-        console.warn(`[PWA] Error checking version (attempt ${checkAttempts + 1}):`, error.name);
-      }
+      console.warn(`[PWA] ❌ Error checking version (attempt ${checkAttempts + 1}):`, error.name);
     } finally {
       setIsChecking(false);
     }
@@ -114,21 +126,18 @@ export const PWAUpdateProvider: FC<{ children: ReactNode }> = ({ children }) => 
       return;
     }
 
-    if (isAdmin) {
-      console.log('[PWA] Forzando verificación de actualizaciones...');
-    }
+    console.log('[PWA] 🔍 Forzando verificación de actualizaciones...');
     
     // Verificar cambios de versión primero (más rápido)
     const versionChanged = await checkVersionChange();
     if (versionChanged) {
-      if (isAdmin) {
-        console.log('[PWA] Cambio de versión detectado, actualizando Service Worker...');
-      }
+      console.log('[PWA] 🔄 Cambio de versión detectado, actualizando Service Worker...');
       // Solo actualizar SW si hay cambio de versión
       await updateServiceWorker(true);
     } else {
       // Si no hay cambio de versión, check SW menos frecuentemente
       if (checkAttempts === 0) {
+        console.log('[PWA] 🔄 Verificando Service Worker...');
         await updateServiceWorker(true);
       }
     }
@@ -142,9 +151,7 @@ export const PWAUpdateProvider: FC<{ children: ReactNode }> = ({ children }) => 
 
     // Verificaciones regulares
     const interval = setInterval(() => {
-      if (isAdmin) {
-        console.log('[PWA] Verificación automática de actualizaciones...');
-      }
+      console.log('[PWA] ⏰ Verificación automática de actualizaciones...');
       forceCheck();
     }, CHECK_INTERVAL);
 
@@ -169,9 +176,7 @@ export const PWAUpdateProvider: FC<{ children: ReactNode }> = ({ children }) => 
         // Delay para evitar checks innecesarios en cambios rápidos de pestaña
         clearTimeout(visibilityTimeout);
         visibilityTimeout = setTimeout(() => {
-          if (isAdmin) {
-            console.log('[PWA] Pestaña visible, verificando actualizaciones...');
-          }
+          console.log('[PWA] 👁️ Pestaña visible, verificando actualizaciones...');
           forceCheck();
         }, VISIBILITY_CHECK_DELAY);
       }
@@ -185,7 +190,7 @@ export const PWAUpdateProvider: FC<{ children: ReactNode }> = ({ children }) => 
   }, []);
 
   useEffect(() => {
-    if (needRefresh && isAdmin) {
+    if (needRefresh) {
       console.log(`[PWA] Actualización crítica detectada para versión ${currentVersion}. Mostrando notificación obligatoria...`);
     }
   }, [needRefresh, isAdmin]);

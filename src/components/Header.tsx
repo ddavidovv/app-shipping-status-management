@@ -39,7 +39,7 @@ export default function Header() {
             <div className="flex flex-col">
               <span className="font-semibold text-xl text-corporate-text">Status Management</span>
               <div className="flex items-center gap-2">
-                <span className="text-xs text-gray-400">v{import.meta.env.VITE_APP_VERSION}</span>
+                <span className="text-xs text-gray-400">v{import.meta.env.VITE_APP_VERSION} (pkg)</span>
                 {isAdmin && (
                   <span 
                     className="text-xs text-blue-400 font-mono"
