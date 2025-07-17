@@ -1,6 +1,7 @@
 import React from 'react';
 import { createRoot } from 'react-dom/client';
 import { AuthProvider } from './context/AuthContext';
+import { PWAUpdateProvider } from './context/PWAUpdateContext';
 import App from './App';
 import './index.css';
 
@@ -10,7 +11,9 @@ if (!root) throw new Error('Root element not found');
 createRoot(root).render(
   <React.StrictMode>
     <AuthProvider>
-      <App />
+      <PWAUpdateProvider>
+        <App />
+      </PWAUpdateProvider>
     </AuthProvider>
   </React.StrictMode>
 );

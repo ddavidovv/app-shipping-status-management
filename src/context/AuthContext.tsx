@@ -25,13 +25,13 @@ const getUserInfoFromToken = (token: string): { email: string | null; roles: str
   try {
     const [, payload] = token.split('.');
     const decodedPayload = JSON.parse(atob(payload));
-    console.log('[AuthContext] Decoded token payload:', JSON.stringify(decodedPayload, null, 2));
+
     const email = decodedPayload.email || null;
     // Normalizar roles y hub_codes a arrays
     const roles = decodedPayload.roles ? (Array.isArray(decodedPayload.roles) ? decodedPayload.roles : [decodedPayload.roles]) : (decodedPayload['cognito:groups'] ? (Array.isArray(decodedPayload['cognito:groups']) ? decodedPayload['cognito:groups'] : [decodedPayload['cognito:groups']]) : []);
     const hub_codes = decodedPayload.hub_codes ? (Array.isArray(decodedPayload.hub_codes) ? decodedPayload.hub_codes : [decodedPayload.hub_codes]) : [];
     const userInfo = { email, roles, hub_codes };
-    console.log('[AuthContext] Extracted user info:', JSON.stringify(userInfo, null, 2));
+
     return userInfo;
   } catch {
     return { email: null, roles: [], hub_codes: [] };
@@ -94,7 +94,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       if (event.data?.type === 'TOKEN_INIT' || event.data?.type === 'TOKEN_UPDATE') {
-        console.log('[AuthContext] Received token message:', JSON.stringify(event.data, null, 2));
+
         const token = event.data.payload?.idToken;
         if (token && hasValidToken(token)) {
           sessionStorage.setItem('idToken', token);
@@ -105,7 +105,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           const roles = enrichedData?.roles || tokenInfo.roles;
           const hub_codes = enrichedData?.hub_codes || tokenInfo.hub_codes;
 
-          console.log('[AuthContext] Final user data:', JSON.stringify({ email: tokenInfo.email, roles, hub_codes }, null, 2));
+
 
           setState({
             isAuthenticated: true,

@@ -63,30 +63,17 @@ export const STATUS_ACTIONS = {
 
 // Funciones helper para verificar si un estado permite una acción específica
 export const isStatusAssignable = (statusCode: StatusCode): boolean => {
-  console.log('Verificando si el estado es asignable:', statusCode);
-  console.log('Lista de estados asignables:', STATUS_ACTIONS.ASSIGNABLE_STATUS_CODES);
-  
-  // Normalizar el código de estado (eliminar espacios y convertir a string)
   const normalizedStatusCode = String(statusCode).trim();
-  
-  // Verificar si el código normalizado está en la lista
-  const isIncluded = STATUS_ACTIONS.ASSIGNABLE_STATUS_CODES.includes(normalizedStatusCode as StatusCode);
-  console.log('¿Incluido en la lista?', isIncluded);
-  
-  return isIncluded;
+  return STATUS_ACTIONS.ASSIGNABLE_STATUS_CODES.includes(normalizedStatusCode as StatusCode);
 };
 
 export const isStatusDeliverable = (statusCode: StatusCode): boolean => {
   const normalizedStatusCode = String(statusCode).trim();
-  console.log('isStatusDeliverable - status code:', normalizedStatusCode);
-  console.log('isStatusDeliverable - deliverable status codes:', STATUS_ACTIONS.DELIVERABLE_STATUS_CODES);
   return STATUS_ACTIONS.DELIVERABLE_STATUS_CODES.includes(normalizedStatusCode as StatusCode);
 };
 
 export const isStatusCancellable = (statusCode: StatusCode): boolean => {
   const normalizedStatusCode = String(statusCode).trim();
-  console.log('isStatusCancellable - status code:', normalizedStatusCode);
-  console.log('isStatusCancellable - cancellable status codes:', STATUS_ACTIONS.CANCELLABLE_STATUS_CODES);
   return STATUS_ACTIONS.CANCELLABLE_STATUS_CODES.includes(normalizedStatusCode as StatusCode);
 };
 

@@ -1,9 +1,18 @@
 import { useState } from 'react';
 import { Package, User, X, Info } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { usePWAUpdate } from '../context/PWAUpdateContext';
 
 export default function Header() {
   const { email, roles, hub_codes } = useAuth();
+  const { countdown } = usePWAUpdate();
+  const isAdmin = roles.includes('Admin');
+
+  const formatTime = (seconds: number) => {
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
+    return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+  };
   const [showDetails, setShowDetails] = useState(false);
 
   const handleClose = () => {
@@ -29,7 +38,17 @@ export default function Header() {
             <Package className="h-8 w-8 text-corporate-primary" />
             <div className="flex flex-col">
               <span className="font-semibold text-xl text-corporate-text">Status Management</span>
-              <span className="text-xs text-gray-400">v{import.meta.env.VITE_APP_VERSION}</span>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-gray-400">v{import.meta.env.VITE_APP_VERSION}</span>
+                {isAdmin && (
+                  <span 
+                    className="text-xs text-blue-400 font-mono"
+                    title={`Tiempo para la próxima comprobación de versión`}
+                  >
+                    [{formatTime(countdown)}]
+                  </span>
+                )}
+              </div>
             </div>
           </div>
           
