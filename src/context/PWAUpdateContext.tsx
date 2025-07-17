@@ -27,8 +27,12 @@ export const PWAUpdateProvider: FC<{ children: ReactNode }> = ({ children }) => 
   const isAdmin = roles.includes('Admin');
   const [checkAttempts, setCheckAttempts] = useState(0);
   const currentVersion = import.meta.env.VITE_APP_VERSION || '1.0.0';
+  const [forceRefresh, setForceRefresh] = useState(false);
 
-  const { needRefresh: [needRefresh], updateServiceWorker } = useRegisterSW({
+  const { 
+    needRefresh: [needRefresh, setNeedRefresh], 
+    updateServiceWorker 
+  } = useRegisterSW({
     onRegistered() {
       if (isAdmin) {
         console.log(`[PWA] Service Worker registered. Current version: ${currentVersion}`);
@@ -41,10 +45,9 @@ export const PWAUpdateProvider: FC<{ children: ReactNode }> = ({ children }) => 
       }
     },
     onNeedRefresh() {
-      if (isAdmin) {
-        console.log(`[PWA] Update available. Current version: ${currentVersion}`);
-      }
+      console.log(`[PWA] 🚨 Update available. Current version: ${currentVersion}`);
       setCheckAttempts(0); // Reset attempts cuando se detecta actualización
+      setForceRefresh(true);
     },
     onOfflineReady() {
       if (isAdmin) {
@@ -96,6 +99,9 @@ export const PWAUpdateProvider: FC<{ children: ReactNode }> = ({ children }) => 
           console.log(`[PWA] 🚨 NEW VERSION DETECTED! Triggering update...`);
           setLastVersion(serverVersion);
           setCheckAttempts(0);
+          // Forzar la notificación de actualización
+          setNeedRefresh(true);
+          setForceRefresh(true);
           return true;
         } else {
           console.log(`[PWA] ✅ No version change detected`);
@@ -187,10 +193,10 @@ export const PWAUpdateProvider: FC<{ children: ReactNode }> = ({ children }) => 
   }, []);
 
   useEffect(() => {
-    if (needRefresh) {
-      console.log(`[PWA] Actualización crítica detectada para versión ${currentVersion}. Mostrando notificación obligatoria...`);
+    if (needRefresh || forceRefresh) {
+      console.log(`[PWA] 🚨 Actualización crítica detectada para versión ${currentVersion}. Mostrando notificación obligatoria...`);
     }
-  }, [needRefresh, isAdmin]);
+  }, [needRefresh, forceRefresh, currentVersion]);
 
   const value = { needRefresh, updateServiceWorker, countdown, currentVersion, forceCheck };
 
