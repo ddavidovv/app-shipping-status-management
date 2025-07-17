@@ -1,12 +1,15 @@
 import { useState, useEffect } from 'react';
 import { usePWAUpdate } from '../context/PWAUpdateContext';
-import { CloudCog, RefreshCw, Clock, Shield, Zap, Bug, Star, ChevronDown, ChevronUp } from 'lucide-react';
+import { CloudCog, RefreshCw, Clock, Shield, Zap, Bug, Star, ChevronDown, ChevronUp, CheckCircle } from 'lucide-react';
 
 // Configuración del mensaje de actualización
 const UPDATE_CONFIG = {
   title: "Actualización requerida",
   subtitle: "Mejoras críticas disponibles",
   description: "Esta actualización incluye mejoras de seguridad importantes y debe aplicarse para continuar usando la aplicación.",
+  successTitle: "¡Actualización completada!",
+  successMessage: "La aplicación se ha actualizado correctamente",
+  versionPrefix: "Versión", // Se mostrará como "Versión 1.0.8"
   benefits: [
     {
       icon: Shield,
@@ -37,13 +40,68 @@ const UPDATE_CONFIG = {
   footerText: "La actualización es obligatoria por motivos de seguridad"
 };
 function UpdatePrompt() {
+// Componente para el mensaje de éxito efímero
+function UpdateSuccessToast({ onClose }: { onClose: () => void }) {
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      onClose();
+    }, 4000); // Se oculta después de 4 segundos
+
+    return () => clearTimeout(timer);
+  }, [onClose]);
+
+  return (
+    <div className="fixed top-5 right-5 z-50 max-w-sm">
+      <div className="bg-green-50 border-2 border-green-200 rounded-xl shadow-lg p-4 toast-in">
+        <div className="flex items-center space-x-3">
+          <div className="flex-shrink-0">
+            <CheckCircle className="h-6 w-6 text-green-600" />
+          </div>
+          <div className="flex-1">
+            <h3 className="text-sm font-semibold text-green-800">
+              {UPDATE_CONFIG.successTitle}
+            </h3>
+            <p className="text-xs text-green-700 mt-1">
+              {UPDATE_CONFIG.successMessage}
+            </p>
+            <p className="text-xs text-green-600 mt-1 font-mono">
+              {UPDATE_CONFIG.versionPrefix} {import.meta.env.VITE_APP_VERSION}
+            </p>
+          </div>
+          <button
+            onClick={onClose}
+            className="flex-shrink-0 text-green-400 hover:text-green-600 transition-colors"
+          >
+            <span className="sr-only">Cerrar</span>
+            <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+            </svg>
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
   const { needRefresh, updateServiceWorker } = usePWAUpdate();
   const [updateState, setUpdateState] = useState<'grace-period' | 'final-warning' | 'updating'>('grace-period');
   const [countdown, setCountdown] = useState(60); // 60 segundos de gracia
   const [finalCountdown, setFinalCountdown] = useState(10); // 10 segundos finales
   const [showDetails, setShowDetails] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [showSuccessToast, setShowSuccessToast] = useState(false);
 
+  // Mostrar mensaje de éxito cuando la página se recarga después de una actualización
+  useEffect(() => {
+    // Verificar si venimos de una actualización
+    const wasUpdating = sessionStorage.getItem('app-updating');
+    if (wasUpdating) {
+      sessionStorage.removeItem('app-updating');
+      // Pequeño delay para que la página termine de cargar
+      setTimeout(() => {
+        setShowSuccessToast(true);
+      }, 500);
+    }
+  }, []);
   // Countdown principal (60 segundos de gracia)
   useEffect(() => {
     if (needRefresh && updateState === 'grace-period') {
@@ -80,6 +138,8 @@ function UpdatePrompt() {
 
   const handleUpdate = async () => {
     setUpdateState('updating');
+    // Marcar que estamos actualizando para mostrar el mensaje de éxito después
+    sessionStorage.setItem('app-updating', 'true');
     try {
       await updateServiceWorker(true);
     } catch (error) {
@@ -94,6 +154,11 @@ function UpdatePrompt() {
   const handleUpdateNow = () => {
     handleUpdate();
   };
+
+  // Mostrar toast de éxito si corresponde
+  if (showSuccessToast) {
+    return <UpdateSuccessToast onClose={() => setShowSuccessToast(false)} />;
+  }
 
   if (!needRefresh) {
     return null;

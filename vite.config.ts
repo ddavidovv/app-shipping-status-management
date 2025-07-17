@@ -13,16 +13,27 @@ export default defineConfig(({ mode }) => {
     // Definir variables de entorno globales para la aplicación cliente
     define: {
       'import.meta.env.VITE_APP_VERSION': JSON.stringify(packageJson.version),
+      // Opcional: También podemos incluir más información del package.json
+      'import.meta.env.VITE_APP_NAME': JSON.stringify(packageJson.name),
     },
     plugins: [
       react(),
       VitePWA({
         registerType: 'prompt',
+        workbox: {
+          // Incluir la versión en el service worker para mejor cache busting
+          additionalManifestEntries: [
+            {
+              url: '/version.json',
+              revision: packageJson.version
+            }
+          ]
+        },
         includeAssets: ['favicon.ico', 'apple-touch-icon.png'],
         manifest: {
           name: 'Status Management',
           short_name: 'StatusApp',
-          description: 'Aplicación para la gestión de estados de envío.',
+          description: `Aplicación para la gestión de estados de envío v${packageJson.version}`,
           theme_color: '#ffffff',
           icons: [
             {
