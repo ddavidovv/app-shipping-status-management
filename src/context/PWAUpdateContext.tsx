@@ -27,8 +27,6 @@ export const PWAUpdateProvider: FC<{ children: ReactNode }> = ({ children }) => 
   const { roles } = useAuth();
   const isAdmin = roles.includes('Admin');
   const [checkAttempts, setCheckAttempts] = useState(0);
-  const { roles } = useAuth();
-  const isAdmin = roles.includes('Admin');
   const currentVersion = import.meta.env.VITE_APP_VERSION || '1.0.0';
 
   const { needRefresh: [needRefresh], updateServiceWorker } = useRegisterSW({
