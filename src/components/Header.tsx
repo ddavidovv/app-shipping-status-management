@@ -5,7 +5,7 @@ import { usePWAUpdate } from '../context/PWAUpdateContext';
 
 export default function Header() {
   const { email, roles, hub_codes } = useAuth();
-  const { countdown } = usePWAUpdate();
+  const { countdown, forceCheck } = usePWAUpdate();
   const isAdmin = roles.includes('Admin');
 
   const formatTime = (seconds: number) => {
@@ -44,6 +44,8 @@ export default function Header() {
                   <span 
                     className="text-xs text-blue-400 font-mono"
                     title={`Próxima verificación de actualizaciones críticas`}
+                    onClick={forceCheck}
+                    style={{ cursor: 'pointer' }}
                   >
                     [{formatTime(countdown)}]
                   </span>

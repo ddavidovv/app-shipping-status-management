@@ -1,6 +1,7 @@
 import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
+import { resolve } from 'path';
 
 // Importar el package.json para leer la versión
 import packageJson from './package.json';
@@ -19,13 +20,39 @@ export default defineConfig(({ mode }) => {
     plugins: [
       react(),
       VitePWA({
-        registerType: 'prompt',
+        registerType: 'autoUpdate',
+        devOptions: {
+          enabled: true,
+          type: 'module'
+        },
         workbox: {
-          // Incluir la versión en el service worker para mejor cache busting
+          // Configuración más agresiva para detectar cambios
+          clientsClaim: true,
+          skipWaiting: true,
+          cleanupOutdatedCaches: true,
+          // Incluir archivos críticos que deben invalidar el cache
           additionalManifestEntries: [
             {
-              url: '/version.json',
+              url: `/?v=${packageJson.version}`,
               revision: packageJson.version
+            },
+            {
+              url: '/version.json',
+              revision: `${packageJson.version}-${Date.now()}`
+            }
+          ],
+          // Estrategias de cache más específicas
+          runtimeCaching: [
+            {
+              urlPattern: /^https:\/\/api-test\.cttexpress\.com\//,
+              handler: 'NetworkFirst',
+              options: {
+                cacheName: 'api-cache',
+                networkTimeoutSeconds: 10,
+                cacheableResponse: {
+                  statuses: [0, 200]
+                }
+              }
             }
           ]
         },
@@ -35,6 +62,7 @@ export default defineConfig(({ mode }) => {
           short_name: 'StatusApp',
           description: `Aplicación para la gestión de estados de envío v${packageJson.version}`,
           theme_color: '#ffffff',
+          start_url: `/?v=${packageJson.version}`,
           icons: [
             {
               src: 'pwa-192x192.png', // placeholder
