@@ -1,11 +1,9 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Package, User, X, Info } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 export default function Header() {
-  const { email, enrichedData } = useAuth();
-  const userRoles = enrichedData?.roles || [];
-  const hubCodes = enrichedData?.hub_codes || [];
+  const { email, roles, hub_codes } = useAuth();
   const [showDetails, setShowDetails] = useState(false);
 
   const handleClose = () => {
@@ -54,8 +52,8 @@ export default function Header() {
                     <div className="mb-1 text-xs text-gray-500 font-semibold">Detalles de usuario</div>
                     <div>
                       <span className="font-medium">Roles:</span>{' '}
-                      {userRoles && userRoles.length > 0 ? (
-                        userRoles.map((role: string, index: number) => (
+                      {roles && roles.length > 0 ? (
+                        roles.map((role: string, index: number) => (
                           <span key={`role-${index}`} className="inline-block ml-1 px-2 py-0.5 bg-blue-100 rounded-full text-xs font-medium text-blue-800">
                             {role}
                           </span>
@@ -66,8 +64,8 @@ export default function Header() {
                     </div>
                     <div>
                       <span className="font-medium">Hubs:</span>{' '}
-                      {hubCodes && hubCodes.length > 0 ? (
-                        hubCodes.map((hub: string, index: number) => (
+                      {hub_codes && hub_codes.length > 0 ? (
+                        hub_codes.map((hub: string, index: number) => (
                           <span key={`hub-${index}`} className="inline-block ml-1 px-2 py-0.5 bg-green-200 rounded-full text-xs font-medium text-green-900">
                             {hub}
                           </span>
