@@ -1,13 +1,48 @@
 import { useState, useEffect } from 'react';
 import { usePWAUpdate } from '../context/PWAUpdateContext';
-import { CloudCog, RefreshCw, Clock, Shield, Zap, Bug, Star } from 'lucide-react';
+import { CloudCog, RefreshCw, Clock, Shield, Zap, Bug, Star, ChevronDown, ChevronUp } from 'lucide-react';
 
+// Configuración del mensaje de actualización
+const UPDATE_CONFIG = {
+  title: "Actualización requerida",
+  subtitle: "Mejoras críticas disponibles",
+  description: "Esta actualización incluye mejoras de seguridad importantes y debe aplicarse para continuar usando la aplicación.",
+  benefits: [
+    {
+      icon: Shield,
+      title: "Seguridad",
+      description: "Parches críticos de seguridad",
+      color: "text-red-600"
+    },
+    {
+      icon: Zap,
+      title: "Rendimiento",
+      description: "Mejoras en velocidad y estabilidad",
+      color: "text-blue-600"
+    },
+    {
+      icon: Bug,
+      title: "Correcciones",
+      description: "Solución de errores reportados",
+      color: "text-green-600"
+    },
+    {
+      icon: Star,
+      title: "Funcionalidades",
+      description: "Nuevas herramientas disponibles",
+      color: "text-purple-600"
+    }
+  ],
+  updateButtonText: "Actualizar ahora",
+  footerText: "La actualización es obligatoria por motivos de seguridad"
+};
 function UpdatePrompt() {
   const { needRefresh, updateServiceWorker } = usePWAUpdate();
   const [updateState, setUpdateState] = useState<'grace-period' | 'final-warning' | 'updating'>('grace-period');
   const [countdown, setCountdown] = useState(60); // 60 segundos de gracia
   const [finalCountdown, setFinalCountdown] = useState(10); // 10 segundos finales
   const [showDetails, setShowDetails] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(false);
 
   // Countdown principal (60 segundos de gracia)
   useEffect(() => {
@@ -149,75 +184,95 @@ function UpdatePrompt() {
               <div className="absolute -top-1 -right-1 w-3 h-3 bg-yellow-400 rounded-full animate-pulse"></div>
             </div>
             <div>
-              <h3 className="font-bold text-lg">Actualización requerida</h3>
-              <p className="text-white/90 text-sm">Mejoras críticas disponibles</p>
+              <h3 className="font-bold text-lg">{UPDATE_CONFIG.title}</h3>
+              <p className="text-white/90 text-sm">{UPDATE_CONFIG.subtitle}</p>
             </div>
+            <button
+              onClick={() => setIsCollapsed(!isCollapsed)}
+              className="ml-auto p-1 hover:bg-white/10 rounded-lg transition-colors"
+              aria-label={isCollapsed ? "Expandir notificación" : "Colapsar notificación"}
+            >
+              {isCollapsed ? (
+                <ChevronDown className="h-5 w-5" />
+              ) : (
+                <ChevronUp className="h-5 w-5" />
+              )}
+            </button>
           </div>
         </div>
 
-        {/* Content */}
-        <div className="p-5">
-          <p className="text-gray-700 text-sm mb-4">
-            Esta actualización incluye <strong>mejoras de seguridad importantes</strong> y debe aplicarse para continuar usando la aplicación.
-          </p>
+        {/* Content - Solo se muestra si no está colapsado */}
+        {!isCollapsed && (
+          <div className="p-5">
+            <p className="text-gray-700 text-sm mb-4">
+              {UPDATE_CONFIG.description}
+            </p>
 
-          {/* Countdown prominente */}
-          <div className="bg-gradient-to-r from-amber-50 to-orange-50 border-2 border-amber-200 rounded-xl p-4 mb-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-2 text-amber-800">
-                <Clock className="h-5 w-5 animate-pulse" />
-                <span className="font-semibold">Actualización automática en:</span>
+            {/* Countdown prominente - Una sola línea */}
+            <div className="bg-gradient-to-r from-amber-50 to-orange-50 border-2 border-amber-200 rounded-xl p-4 mb-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-2 text-amber-800">
+                  <Clock className="h-5 w-5 animate-pulse" />
+                  <span className="font-semibold whitespace-nowrap">Actualización automática en:</span>
+                </div>
+                <div className="text-2xl font-bold text-amber-900 bg-white px-3 py-1 rounded-lg shadow-sm">
+                  {Math.floor(countdown / 60)}:{(countdown % 60).toString().padStart(2, '0')}
+                </div>
               </div>
-              <div className="text-2xl font-bold text-amber-900 bg-white px-3 py-1 rounded-lg shadow-sm">
+            </div>
+
+            {/* Beneficios de la actualización */}
+            <button
+              onClick={() => setShowDetails(!showDetails)}
+              className="text-sm text-corporate-primary hover:text-red-800 mb-4 flex items-center space-x-1 font-medium"
+            >
+              <span>{showDetails ? 'Ocultar' : 'Ver'} qué incluye esta actualización</span>
+            </button>
+
+            {showDetails && (
+              <div className="bg-gray-50 rounded-xl p-4 mb-4 text-sm">
+                <div className="space-y-3">
+                  {UPDATE_CONFIG.benefits.map((benefit, index) => {
+                    const IconComponent = benefit.icon;
+                    return (
+                      <div key={index} className="flex items-start space-x-2">
+                        <IconComponent className={`h-4 w-4 ${benefit.color} mt-0.5 flex-shrink-0`} />
+                        <span className="text-gray-700">
+                          <strong>{benefit.title}:</strong> {benefit.description}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Action button */}
+            <button
+              onClick={handleUpdateNow}
+              className="w-full bg-corporate-primary text-white px-6 py-3 rounded-xl hover:bg-red-800 transition-all duration-200 text-sm font-semibold flex items-center justify-center space-x-2 shadow-lg hover:shadow-xl transform hover:scale-[1.02]"
+            >
+              <RefreshCw className="h-4 w-4" />
+              <span>{UPDATE_CONFIG.updateButtonText}</span>
+            </button>
+
+            <p className="text-xs text-gray-500 text-center mt-3">
+              {UPDATE_CONFIG.footerText}
+            </p>
+          </div>
+        )}
+
+        {/* Versión colapsada - Solo muestra countdown */}
+        {isCollapsed && (
+          <div className="px-5 pb-4">
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-gray-600 font-medium">Actualización en:</span>
+              <div className="text-lg font-bold text-amber-900 bg-amber-50 px-2 py-1 rounded">
                 {Math.floor(countdown / 60)}:{(countdown % 60).toString().padStart(2, '0')}
               </div>
             </div>
           </div>
-
-          {/* Beneficios de la actualización */}
-          <button
-            onClick={() => setShowDetails(!showDetails)}
-            className="text-sm text-corporate-primary hover:text-red-800 mb-4 flex items-center space-x-1 font-medium"
-          >
-            <span>{showDetails ? 'Ocultar' : 'Ver'} qué incluye esta actualización</span>
-          </button>
-
-          {showDetails && (
-            <div className="bg-gray-50 rounded-xl p-4 mb-4 text-sm">
-              <div className="space-y-3">
-                <div className="flex items-start space-x-2">
-                  <Shield className="h-4 w-4 text-red-600 mt-0.5 flex-shrink-0" />
-                  <span className="text-gray-700"><strong>Seguridad:</strong> Parches críticos de seguridad</span>
-                </div>
-                <div className="flex items-start space-x-2">
-                  <Zap className="h-4 w-4 text-blue-600 mt-0.5 flex-shrink-0" />
-                  <span className="text-gray-700"><strong>Rendimiento:</strong> Mejoras en velocidad y estabilidad</span>
-                </div>
-                <div className="flex items-start space-x-2">
-                  <Bug className="h-4 w-4 text-green-600 mt-0.5 flex-shrink-0" />
-                  <span className="text-gray-700"><strong>Correcciones:</strong> Solución de errores reportados</span>
-                </div>
-                <div className="flex items-start space-x-2">
-                  <Star className="h-4 w-4 text-purple-600 mt-0.5 flex-shrink-0" />
-                  <span className="text-gray-700"><strong>Funcionalidades:</strong> Nuevas herramientas disponibles</span>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Action button */}
-          <button
-            onClick={handleUpdateNow}
-            className="w-full bg-corporate-primary text-white px-6 py-3 rounded-xl hover:bg-red-800 transition-all duration-200 text-sm font-semibold flex items-center justify-center space-x-2 shadow-lg hover:shadow-xl transform hover:scale-[1.02]"
-          >
-            <RefreshCw className="h-4 w-4" />
-            <span>Actualizar ahora</span>
-          </button>
-
-          <p className="text-xs text-gray-500 text-center mt-3">
-            La actualización es obligatoria por motivos de seguridad
-          </p>
-        </div>
+        )}
       </div>
     </div>
   );
