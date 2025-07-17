@@ -17,4 +17,32 @@
       opacity: 1;
     }
   }
+
+  .slide-up {
+    animation: slide-up-animation 0.3s ease-out forwards;
+  }
+
+  @keyframes slide-up-animation {
+    from {
+      transform: translateY(20px);
+      opacity: 0;
+    }
+    to {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  }
+
+  .pulse-soft {
+    animation: pulse-soft-animation 2s ease-in-out infinite;
+  }
+
+  @keyframes pulse-soft-animation {
+    0%, 100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.7;
+    }
+  }
 }

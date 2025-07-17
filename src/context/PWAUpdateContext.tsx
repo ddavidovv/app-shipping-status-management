@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect, ReactNode, FC } from 'react';
 import { useRegisterSW } from 'virtual:pwa-register/react';
+import { useAuth } from './AuthContext';
 
 const CHECK_INTERVAL = 10 * 60 * 1000; // 10 minutos
 
@@ -13,6 +14,8 @@ const PWAUpdateContext = createContext<PWAUpdateContextType | undefined>(undefin
 
 export const PWAUpdateProvider: FC<{ children: ReactNode }> = ({ children }) => {
   const [countdown, setCountdown] = useState(CHECK_INTERVAL / 1000);
+  const { roles } = useAuth();
+  const isAdmin = roles.includes('Admin');
 
   const { needRefresh: [needRefresh], updateServiceWorker } = useRegisterSW({
     onRegistered() {
@@ -25,7 +28,9 @@ export const PWAUpdateProvider: FC<{ children: ReactNode }> = ({ children }) => 
 
   useEffect(() => {
     const interval = setInterval(() => {
-      console.log('[PWA] Checking for new version...');
+      if (isAdmin) {
+        console.log('[PWA] Checking for new version...');
+      }
       updateServiceWorker(true);
     }, CHECK_INTERVAL);
 
@@ -40,11 +45,10 @@ export const PWAUpdateProvider: FC<{ children: ReactNode }> = ({ children }) => 
   }, [updateServiceWorker]);
 
   useEffect(() => {
-    if (needRefresh) {
-      console.log('[PWA] New version detected. Updating automatically...');
-      updateServiceWorker(true);
+    if (needRefresh && isAdmin) {
+      console.log('[PWA] New version detected. Showing update prompt...');
     }
-  }, [needRefresh, updateServiceWorker]);
+  }, [needRefresh, isAdmin]);
 
   const value = { needRefresh, updateServiceWorker, countdown };
 
