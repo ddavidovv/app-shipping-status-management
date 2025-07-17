@@ -2,7 +2,7 @@ import { createContext, useContext, useState, useEffect, ReactNode, FC } from 'r
 import { useRegisterSW } from 'virtual:pwa-register/react';
 import { useAuth } from './AuthContext';
 
-const CHECK_INTERVAL = 10 * 60 * 1000; // 10 minutos
+const CHECK_INTERVAL = 5 * 60 * 1000; // 5 minutos (más frecuente para actualizaciones críticas)
 
 interface PWAUpdateContextType {
   needRefresh: boolean;
@@ -29,7 +29,7 @@ export const PWAUpdateProvider: FC<{ children: ReactNode }> = ({ children }) => 
   useEffect(() => {
     const interval = setInterval(() => {
       if (isAdmin) {
-        console.log('[PWA] Checking for new version...');
+        console.log('[PWA] Verificando actualizaciones críticas...');
       }
       updateServiceWorker(true);
     }, CHECK_INTERVAL);
@@ -46,7 +46,7 @@ export const PWAUpdateProvider: FC<{ children: ReactNode }> = ({ children }) => 
 
   useEffect(() => {
     if (needRefresh && isAdmin) {
-      console.log('[PWA] New version detected. Showing update prompt...');
+      console.log('[PWA] Actualización crítica detectada. Mostrando notificación obligatoria...');
     }
   }, [needRefresh, isAdmin]);
 

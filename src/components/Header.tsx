@@ -43,7 +43,7 @@ export default function Header() {
                 {isAdmin && (
                   <span 
                     className="text-xs text-blue-400 font-mono"
-                    title={`Tiempo para la próxima comprobación de versión`}
+                    title={`Próxima verificación de actualizaciones críticas`}
                   >
                     [{formatTime(countdown)}]
                   </span>
