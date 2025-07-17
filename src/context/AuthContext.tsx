@@ -98,15 +98,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const token = event.data.payload?.idToken;
         if (token && hasValidToken(token)) {
           sessionStorage.setItem('idToken', token);
-          const userInfo = getUserInfoFromToken(token);
+          const tokenInfo = getUserInfoFromToken(token);
+          const enrichedData = event.data.payload?.enrichedData;
+
+          // Priorizar datos de enrichedData, con fallback al token
+          const roles = enrichedData?.roles || tokenInfo.roles;
+          const hub_codes = enrichedData?.hub_codes || tokenInfo.hub_codes;
+
+          console.log('[AuthContext] Final user data:', JSON.stringify({ email: tokenInfo.email, roles, hub_codes }, null, 2));
+
           setState({
             isAuthenticated: true,
             idToken: token,
             loading: false,
             error: null,
-            email: userInfo.email,
-            roles: userInfo.roles,
-            hub_codes: userInfo.hub_codes,
+            email: tokenInfo.email,
+            roles: roles,
+            hub_codes: hub_codes,
           });
         } else {
           sessionStorage.removeItem('idToken');
