@@ -1,152 +1,174 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 
+// --- Funciones Helper ---
+const getIdToken = (): string | null => {
+  try {
+    return sessionStorage.getItem('idToken');
+  } catch {
+    return null;
+  }
+};
+
+const hasValidToken = (token: string): boolean => {
+  try {
+    const [, payload] = token.split('.');
+    if (!payload) return false;
+    const decodedPayload = JSON.parse(atob(payload));
+    const expirationTime = decodedPayload.exp * 1000;
+    return expirationTime > Date.now();
+  } catch {
+    return false;
+  }
+};
+
+const getUserInfoFromToken = (token: string): { email: string | null; roles: string[]; hub_codes: string[] } => {
+  try {
+    const [, payload] = token.split('.');
+    const decodedPayload = JSON.parse(atob(payload));
+    const email = decodedPayload.email || null;
+    // Normalizar roles y hub_codes a arrays
+    const roles = decodedPayload.roles ? (Array.isArray(decodedPayload.roles) ? decodedPayload.roles : [decodedPayload.roles]) : (decodedPayload['cognito:groups'] ? (Array.isArray(decodedPayload['cognito:groups']) ? decodedPayload['cognito:groups'] : [decodedPayload['cognito:groups']]) : []);
+    const hub_codes = decodedPayload.hub_codes ? (Array.isArray(decodedPayload.hub_codes) ? decodedPayload.hub_codes : [decodedPayload.hub_codes]) : [];
+    return { email, roles, hub_codes };
+  } catch {
+    return { email: null, roles: [], hub_codes: [] };
+  }
+};
+
 interface AuthContextType {
   isAuthenticated: boolean;
   idToken: string | null;
-  enrichedData: any | null;
-  expiresIn: number | null;
-  email: string | null;
   loading: boolean;
   error: string | null;
+  email: string | null;
+  roles: string[];
+  hub_codes: string[];
 }
 
 const AuthContext = createContext<AuthContextType>({
   isAuthenticated: false,
   idToken: null,
-  enrichedData: null,
-  expiresIn: null,
-  email: null,
   loading: true,
   error: null,
+  email: null,
+  roles: [],
+  hub_codes: [],
 });
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<AuthContextType>({
     isAuthenticated: false,
     idToken: null,
-    enrichedData: null,
-    expiresIn: null,
-    email: null,
     loading: true,
     error: null,
+    email: null,
+    roles: [],
+    hub_codes: [],
   });
 
+  const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+
   useEffect(() => {
-    // Función para validar el token JWT y extraer el email
-    function getEmailFromToken(token: string | null): string | null {
-      if (!token) return null;
-      try {
-        const [, payload] = token.split('.');
-        if (!payload) return null;
-        const decoded = JSON.parse(atob(payload));
-        return decoded.email || null;
-      } catch {
-        return null;
-      }
-    }
-    function isValidToken(token: string | null): boolean {
-      if (!token) return false;
-      try {
-        const [, payload] = token.split('.');
-        if (!payload) return false;
-        const decoded = JSON.parse(atob(payload));
-        if (!decoded.exp) return false;
-        const expirationTime = decoded.exp * 1000;
-        return expirationTime > Date.now();
-      } catch {
-        return false;
-      }
+    if (isLocalhost) {
+      console.warn('[AuthContext] Ejecutando en modo local. Usando datos de autenticación simulados.');
+      setState({
+        isAuthenticated: true,
+        idToken: 'mock-token-for-local-development',
+        loading: false,
+        error: null,
+        email: 'usuario@ejemplo.com',
+        roles: ['Admin', 'Operations_Central'], // Roles para pruebas locales
+        hub_codes: ['MAD1', 'BCN2'], // Hubs para pruebas locales
+      });
+      return;
     }
 
     const handleMessage = (event: MessageEvent) => {
+      if (
+        event.data?.source?.startsWith('react-devtools-')
+      ) {
+        return;
+      }
+
       if (event.data?.type === 'TOKEN_INIT' || event.data?.type === 'TOKEN_UPDATE') {
-        const token = event.data.payload?.idToken ?? null;
-        const enrichedData = event.data.payload?.enrichedData ?? null;
-        const expiresIn = event.data.payload?.expiresIn ?? null;
-        const email = getEmailFromToken(token);
-        // LOG: Mostrar exactamente lo recibido
-        console.log('[AuthContext] TOKEN recibido:', {
-          type: event.data.type,
-          idToken: token,
-          enrichedData,
-          expiresIn,
-          email,
-        });
-        if (isValidToken(token)) {
+        const token = event.data.payload?.idToken;
+        if (token && hasValidToken(token)) {
+          sessionStorage.setItem('idToken', token);
+          const userInfo = getUserInfoFromToken(token);
           setState({
             isAuthenticated: true,
             idToken: token,
-            enrichedData,
-            expiresIn,
-            email,
             loading: false,
             error: null,
+            email: userInfo.email,
+            roles: userInfo.roles,
+            hub_codes: userInfo.hub_codes,
           });
         } else {
-          setState({
-            isAuthenticated: false,
-            idToken: null,
-            enrichedData: null,
-            expiresIn: null,
-            email: null,
-            loading: false,
-            error: 'Token inválido o expirado',
-          });
+          sessionStorage.removeItem('idToken');
+          setState(prev => ({ ...prev, isAuthenticated: false, idToken: null, loading: false, error: 'Token inválido' }));
         }
       } else if (event.data?.type === 'TOKEN_EXPIRED') {
-        setState({
-          isAuthenticated: false,
-          idToken: null,
-          enrichedData: null,
-          expiresIn: null,
-          email: null,
-          loading: false,
-          error: 'Token expirado',
-        });
+        sessionStorage.removeItem('idToken');
+        setState(prev => ({ ...prev, isAuthenticated: false, idToken: null, loading: false, error: 'Token expirado' }));
         requestTokenFromOpener();
       }
     };
 
     const requestTokenFromOpener = () => {
-      console.log('[AuthContext] Solicitando token a la aplicación principal...');
       if (!window.opener) {
-        setState(prev => ({
-          ...prev,
-          loading: false,
-          error: 'Esta aplicación debe abrirse desde la aplicación principal',
-        }));
+        setState(prev => ({ ...prev, loading: false, error: 'Esta aplicación debe abrirse desde la aplicación principal' }));
         return;
       }
       try {
-        window.opener.postMessage(
-          {
-            type: 'READY_FOR_TOKEN',
-            source: 'CHILD_APP'
-          },
-          '*'
-        );
+        window.opener.postMessage({ type: 'READY_FOR_TOKEN', source: 'CHILD_APP' }, '*');
       } catch (error) {
-        setState(prev => ({
-          ...prev,
+        setState(prev => ({ ...prev, loading: false, error: 'Error de comunicación con la aplicación principal' }));
+      }
+    };
+
+    const initAuth = () => {
+      const storedToken = getIdToken();
+      if (storedToken && hasValidToken(storedToken)) {
+        const userInfo = getUserInfoFromToken(storedToken);
+        setState({
+          isAuthenticated: true,
+          idToken: storedToken,
           loading: false,
-          error: 'Error de comunicación con la aplicación principal',
-        }));
+          error: null,
+          email: userInfo.email,
+          roles: userInfo.roles,
+          hub_codes: userInfo.hub_codes,
+        });
+      } else {
+        requestTokenFromOpener();
       }
     };
 
     window.addEventListener('message', handleMessage);
-    requestTokenFromOpener();
+    initAuth();
+
+    let refreshInterval: number | null = null;
+    if (window.opener) {
+      refreshInterval = window.setInterval(() => {
+        if (state.idToken) {
+          try {
+            console.log('[AuthContext] Solicitando refresco de token...');
+            window.opener?.postMessage({ type: 'TOKEN_REFRESH_REQUEST', source: 'CHILD_APP' }, '*');
+          } catch {}
+        }
+      }, 4 * 60 * 1000); // 4 minutos
+    }
 
     return () => {
       window.removeEventListener('message', handleMessage);
+      if (refreshInterval !== null) {
+        clearInterval(refreshInterval);
+      }
     };
-  }, []);
+  }, [state.idToken, isLocalhost]);
 
-  return (
-    <AuthContext.Provider value={state}>
-      {children}
-    </AuthContext.Provider>
-  );
+  return <AuthContext.Provider value={state}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth() {
