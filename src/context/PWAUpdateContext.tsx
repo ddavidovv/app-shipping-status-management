@@ -1,7 +1,6 @@
 import { createContext, useContext, useState, useEffect, ReactNode, FC } from 'react';
 import { useRegisterSW } from 'virtual:pwa-register/react';
 import { useAuth } from './AuthContext';
-import { useAuth } from './AuthContext';
 
 // Intervalos optimizados para balance rendimiento/detección
 const CHECK_INTERVAL = 5 * 60 * 1000; // 5 minutos (reducido de 2)
@@ -27,8 +26,6 @@ export const PWAUpdateProvider: FC<{ children: ReactNode }> = ({ children }) => 
   const { roles } = useAuth();
   const isAdmin = roles.includes('Admin');
   const [checkAttempts, setCheckAttempts] = useState(0);
-  const { roles } = useAuth();
-  const isAdmin = roles.includes('Admin');
   const currentVersion = import.meta.env.VITE_APP_VERSION || '1.0.0';
 
   const { needRefresh: [needRefresh], updateServiceWorker } = useRegisterSW({
