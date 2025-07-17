@@ -1,7 +1,7 @@
 {
-  "version": "1.0.8",
-  "buildDate": "2025-01-15T10:30:00Z",
-  "buildTimestamp": 1705315800000,
+  "version": "1.0.9",
+  "buildDate": "2025-01-15T12:00:00Z",
+  "buildTimestamp": 1705320000000,
   "features": [
     "Mejoras de seguridad",
     "Optimizaciones de rendimiento", 

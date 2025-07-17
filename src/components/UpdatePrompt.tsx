@@ -64,9 +64,11 @@ function UpdateSuccessToast({ onClose }: { onClose: () => void }) {
             <p className="text-xs text-green-700 mt-1">
               {UPDATE_CONFIG.successMessage}
             </p>
-            <p className="text-xs text-green-600 mt-1 font-mono">
-              {UPDATE_CONFIG.versionPrefix} {import.meta.env.VITE_APP_VERSION}
-            </p>
+            <div className="flex items-center gap-2 mt-1">
+              <p className="text-xs text-green-600 font-mono">
+                {UPDATE_CONFIG.versionPrefix} {import.meta.env.VITE_APP_VERSION} (pkg)
+              </p>
+            </div>
           </div>
           <button
             onClick={onClose}
