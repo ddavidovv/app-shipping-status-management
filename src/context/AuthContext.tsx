@@ -143,15 +143,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const storedToken = getIdToken();
       if (storedToken && hasValidToken(storedToken)) {
         const userInfo = getUserInfoFromToken(storedToken);
-        setState({
+        setState(prevState => ({
+          ...prevState, // Mantener el estado anterior (incluyendo roles/hubs de enrichedData)
           isAuthenticated: true,
           idToken: storedToken,
           loading: false,
           error: null,
           email: userInfo.email,
-          roles: userInfo.roles,
-          hub_codes: userInfo.hub_codes,
-        });
+          // Solo sobrescribir roles/hubs si el token los tiene y el estado no
+          roles: userInfo.roles.length > 0 ? userInfo.roles : prevState.roles,
+          hub_codes: userInfo.hub_codes.length > 0 ? userInfo.hub_codes : prevState.hub_codes,
+        }));
       } else {
         requestTokenFromOpener();
       }
