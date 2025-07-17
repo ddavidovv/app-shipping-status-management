@@ -1,7 +1,6 @@
 import { createContext, useContext, useState, useEffect, ReactNode, FC } from 'react';
 import { useRegisterSW } from 'virtual:pwa-register/react';
 import { useAuth } from './AuthContext';
-import { useAuth } from './AuthContext';
 
 // Intervalos optimizados para balance rendimiento/detección
 const CHECK_INTERVAL = 5 * 60 * 1000; // 5 minutos (reducido de 2)
