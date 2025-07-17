@@ -33,6 +33,7 @@ export const PWAUpdateProvider: FC<{ children: ReactNode }> = ({ children }) => 
   const { 
     needRefresh: [needRefresh, setNeedRefresh], 
     updateServiceWorker 
+  }
   const { 
     needRefresh: [needRefresh, setNeedRefresh], 
     updateServiceWorker 
